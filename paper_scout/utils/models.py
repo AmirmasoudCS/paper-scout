@@ -4,7 +4,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class SourceName(str, Enum):
@@ -53,8 +53,7 @@ class Paper(BaseModel):
     # Populated during summarization (Phase 5)
     summary: Optional[PaperSummary] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     def dedupe_key(self) -> str:
         """Normalized title used for cross-source deduplication (Phase 2)."""

@@ -26,7 +26,11 @@ class ArxivSource(PaperSource):
                 max_results=max_results,
                 sort_by=arxiv.SortCriterion.Relevance,
             )
-            client = arxiv.Client()
+            client = arxiv.Client(
+                page_size=max_results,
+                delay_seconds=3.0,   # be polite to arXiv's rate limits
+                num_retries=3,        # arxiv.Client has built-in retry on failure
+            )
             results = list(client.results(search))
         except Exception as e:
             logger.error(f"arXiv search failed for query '{query}': {e}")

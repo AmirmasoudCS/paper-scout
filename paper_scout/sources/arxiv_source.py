@@ -15,23 +15,23 @@ class ArxivSource(PaperSource):
         self.categories = categories or []
 
     def search(self, query: str, max_results: int) -> list[Paper]:
-        full_query = query
+        full_query = f"all:{query}"
         if self.categories:
             cat_filter = " OR ".join(f"cat:{c}" for c in self.categories)
-            full_query = f"({query}) AND ({cat_filter})"
+            full_query = f"({full_query}) AND ({cat_filter})"
 
         try:
             search = arxiv.Search(
                 query=full_query,
                 max_results=max_results,
-                sort_by=arxiv.SortCriterion.SubmittedDate,
-                sort_order=arxiv.SortOrder.Descending,
+                sort_by=arxiv.SortCriterion.Relevance,
             )
             client = arxiv.Client()
             results = list(client.results(search))
         except Exception as e:
             logger.error(f"arXiv search failed for query '{query}': {e}")
             return []
+
 
         papers = []
         for result in results:

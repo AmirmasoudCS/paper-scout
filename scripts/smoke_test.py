@@ -1,12 +1,11 @@
-import logging
-logging.basicConfig(level=logging.INFO)
+import requests
 
-from paper_scout.sources.papers_with_code_source import PapersWithCodeSource
-
-source = PapersWithCodeSource()
-papers = source.search("diffusion models for audio generation", max_results=5)
-
-for p in papers:
-    print(f"- {p.title} ({p.published_date}) [arxiv: {p.arxiv_id}]")
-    print(f"  {p.abstract[:150]}...")
-    print()
+resp = requests.get(
+    "https://paperswithcode.com/api/v1/papers/",
+    params={"q": "diffusion models", "items_per_page": 5},
+    timeout=15,
+)
+print("Status:", resp.status_code)
+print("Content-Type:", resp.headers.get("content-type"))
+print("Body (first 500 chars):")
+print(resp.text[:500])

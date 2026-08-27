@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 class SourceName(str, Enum):
     ARXIV = "arxiv"
     SEMANTIC_SCHOLAR = "semantic_scholar"
-    PAPERS_WITH_CODE = "papers_with_code"
+    HUGGINGFACE_PAPERS = "huggingface_papers"
 
 
 class ExtractedSections(BaseModel):

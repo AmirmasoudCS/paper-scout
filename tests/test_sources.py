@@ -3,7 +3,7 @@ import pytest
 
 from paper_scout.sources.arxiv_source import ArxivSource
 from paper_scout.sources.semantic_scholar_source import SemanticScholarSource
-from paper_scout.sources.papers_with_code_source import PapersWithCodeSource
+from paper_scout.sources.huggingface_papers_source import HuggingFacePapersSource
 from paper_scout.utils.models import Paper
 
 TEST_QUERY = "diffusion models for audio generation"
@@ -39,8 +39,8 @@ def test_semantic_scholar_source_returns_relevant_papers():
 
 
 @pytest.mark.network
-def test_papers_with_code_source_returns_relevant_papers():
-    source = PapersWithCodeSource()
+def test_huggingface_papers_source_returns_relevant_papers():
+    source = HuggingFacePapersSource()
     papers = source.search(TEST_QUERY, max_results=MAX_RESULTS)
     _assert_valid_papers(papers)
     combined_text = " ".join(p.title.lower() + p.abstract.lower() for p in papers)
@@ -51,7 +51,7 @@ def test_papers_with_code_source_returns_relevant_papers():
 def test_all_sources_degrade_gracefully_on_bad_query():
     """A nonsense query should return an empty list, not raise."""
     nonsense_query = "zzxxqq_nonexistent_topic_asdkjaslkjd"
-    for source_cls in (ArxivSource, SemanticScholarSource, PapersWithCodeSource):
+    for source_cls in (ArxivSource, SemanticScholarSource, HuggingFacePapersSource):
         source = source_cls()
         papers = source.search(nonsense_query, max_results=5)
         assert isinstance(papers, list)  # should never raise, even with 0 results

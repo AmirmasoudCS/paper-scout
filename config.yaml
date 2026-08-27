@@ -13,7 +13,7 @@ sources:
   semantic_scholar:
     enabled: true
     api_key: null                # optional, raises rate limits; loaded from .env if set
-  papers_with_code:
+  huggingface_papers:
     enabled: true
 
 # ── Ranking ────────────────────────────────────────────

@@ -12,7 +12,7 @@ BASE_URL = "https://huggingface.co/api/papers/search"
 
 
 class HuggingFacePapersSource(PaperSource):
-    name = SourceName.PAPERS_WITH_CODE  # keeping enum name for now, see note below
+    name = SourceName.HUGGINGFACE_PAPERS
 
     def search(self, query: str, max_results: int, retries: int = 3) -> list[Paper]:
         params = {"q": query, "limit": max_results}

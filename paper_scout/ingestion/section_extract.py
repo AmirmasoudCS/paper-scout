@@ -90,12 +90,66 @@ def _is_stop_heading(raw_heading: str) -> bool:
 
 
 def extract_text(pdf_path: str | Path) -> Optional[str]:
-    """Extract raw text from a PDF, page-joined. Returns None on failure."""
+    """
+    Extract raw text from a PDF, page-joined, using a column-aware
+    reading-order heuristic.
+
+    Plain page.get_text("text") interleaves left/right column text on
+    two-column academic layouts, which mangles heading lines like
+    "6. Limitations" so they no longer survive as clean, matchable
+    lines for _find_headings(). Instead we read blocks (bounding boxes),
+    sort by vertical position, and treat any block wider than ~60% of
+    the page width as a full-width "flush point" (title, section
+    heading, figure caption spanning both columns) that drains the
+    accumulated left/right column buffers — sorted by y within each
+    buffer — before continuing. Narrow blocks are bucketed left/right
+    by their center x-position relative to the page midpoint.
+
+    Single-column pages are nearly all "full-width" blocks, so this
+    degrades to the same top-to-bottom order as before.
+    """
     try:
         doc = pymupdf.open(str(pdf_path))
-        pages = [page.get_text("text") for page in doc]
+        pages_text: list[str] = []
+
+        for page in doc:
+            page_width = page.rect.width
+            midpoint = page_width / 2.0
+
+            raw_blocks = page.get_text("blocks")
+            # block tuple: (x0, y0, x1, y1, text, block_no, block_type)
+            text_blocks = [b for b in raw_blocks if b[6] == 0 and b[4].strip()]
+            text_blocks.sort(key=lambda b: b[1])  # top-to-bottom first pass
+
+            left_buf: list[tuple] = []
+            right_buf: list[tuple] = []
+            ordered_parts: list[str] = []
+
+            def _drain() -> None:
+                left_buf.sort(key=lambda b: b[1])
+                right_buf.sort(key=lambda b: b[1])
+                for b in left_buf:
+                    ordered_parts.append(b[4])
+                for b in right_buf:
+                    ordered_parts.append(b[4])
+                left_buf.clear()
+                right_buf.clear()
+
+            for b in text_blocks:
+                x0, _y0, x1, _y1, text = b[0], b[1], b[2], b[3], b[4]
+                block_width = x1 - x0
+                if block_width > 0.6 * page_width:
+                    _drain()
+                    ordered_parts.append(text)
+                else:
+                    center_x = (x0 + x1) / 2.0
+                    (left_buf if center_x < midpoint else right_buf).append(b)
+
+            _drain()
+            pages_text.append("\n".join(ordered_parts))
+
         doc.close()
-        return "\n".join(pages)
+        return "\n".join(pages_text)
     except Exception as exc:  # pymupdf can raise several different error types
         logger.warning("Failed to extract text from %s: %s", pdf_path, exc)
         return None

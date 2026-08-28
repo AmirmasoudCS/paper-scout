@@ -1,6 +1,9 @@
 # paper-scout
 
-![paper-scout banner](banner.svg)
+<div align="center">
+    <img src="banner.scg">
+    <p><em>Generated using Claude.</em></p>
+</div>
 
 paper-scout is an agentic pipeline that takes a research topic as input, searches multiple paper sources, and produces a markdown report summarizing recent work in that area. The standout feature is future work ideation that is grounded in the actual Limitations and Future Work sections extracted from the papers themselves, rather than free form brainstorming from a language model.
 

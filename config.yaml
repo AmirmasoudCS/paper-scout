@@ -40,12 +40,12 @@ ingestion:
 # ── LLM ────────────────────────────────────────────────
 llm:
   provider: "ollama"
-  small_model:                   # used for per-paper summarization (Phase 5)
-    name: "qwen2.5:7b-instruct-q4_K_M"
+  small_model:
+    name: "qwen3.5:9b"
     temperature: 0.3
     max_tokens: 512
-  large_model:                   # used for synthesis + future-work ideation (Phase 6)
-    name: "qwen2.5:14b-instruct-q4_K_M"
+  large_model:
+    name: "gemma4:e4b"
     temperature: 0.5
     max_tokens: 1500
   timeout_seconds: 120

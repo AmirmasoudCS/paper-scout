@@ -260,3 +260,75 @@ def test_fetch_pdf_live_download_smoke_test(tmp_path):
 
     assert result.exists()
     assert result.stat().st_size > 0
+
+def _make_two_col_pdf(tmp_path: Path, filename: str, heading: str, left_body: str, right_body: str) -> Path:
+    """Render a synthetic two-column academic layout: a full-width heading
+    followed by two side-by-side text columns, to prove column-aware
+    extraction keeps reading order intact instead of interleaving them."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    pw = page.rect.width
+
+    page.insert_textbox(pymupdf.Rect(50, 40, pw - 50, 65), heading, fontsize=12)
+
+    col_gap = 15
+    col_width = (pw - 100 - col_gap) / 2
+    left_rect = pymupdf.Rect(50, 80, 50 + col_width, 700)
+    right_rect = pymupdf.Rect(50 + col_width + col_gap, 80, 50 + col_width + col_gap + col_width, 700)
+
+    page.insert_textbox(left_rect, left_body, fontsize=10)
+    page.insert_textbox(right_rect, right_body, fontsize=10)
+
+    pdf_path = tmp_path / filename
+    doc.save(str(pdf_path))
+    doc.close()
+    return pdf_path
+
+
+TWO_COL_LEFT = (
+    "This is the left column text. It discusses the first part of the "
+    "limitations of the approach in some detail across several lines "
+    "of prose so it wraps."
+)
+TWO_COL_RIGHT = (
+    "This is the right column text, continuing directly after the left "
+    "column in true reading order, discussing future extensions and "
+    "remaining gaps."
+)
+
+
+@pytest.fixture
+def two_column_pdf(tmp_path) -> Path:
+    return _make_two_col_pdf(
+        tmp_path,
+        "two_column.pdf",
+        heading="6. Limitations",
+        left_body=TWO_COL_LEFT,
+        right_body=TWO_COL_RIGHT,
+    )
+
+
+def test_extract_text_does_not_interleave_two_columns(two_column_pdf):
+    text = extract_text(two_column_pdf)
+    assert text is not None
+
+    # The heading should survive as a clean, full-width line (not split
+    # or merged with column text) so _find_headings() can match it.
+    assert "6. Limitations" in text
+
+    # Left column content must appear in full before right column
+    # content starts — proves columns weren't interleaved line-by-line.
+    left_idx = text.find("left column")
+    right_idx = text.find("right column")
+    assert left_idx != -1
+    assert right_idx != -1
+    assert left_idx < right_idx
+
+
+def test_extract_sections_recovers_limitations_from_two_column_pdf(two_column_pdf):
+    sections, full_text_available = extract_sections(two_column_pdf, ["limitations"])
+
+    assert full_text_available is True
+    assert sections.limitations is not None
+    assert "left column" in sections.limitations
+    assert "right column" in sections.limitations

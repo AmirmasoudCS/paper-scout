@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 _REQUIRED_KEYS = {"problem", "method", "key_result"}
 _JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
+_JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
 def _clean_json_text(raw: str) -> str:
@@ -37,13 +38,35 @@ def _clean_json_text(raw: str) -> str:
     return _JSON_FENCE_RE.sub("", raw).strip()
 
 
+def _extract_json_object(text: str) -> str:
+    """
+    Best-effort extraction of a JSON object from text that may contain
+    leading/trailing prose. Needed because format="json" is known to be
+    silently ignored on some thinking-capable models once think=False
+    is set (ollama/ollama#14645) — so json_mode isn't a hard guarantee
+    of clean JSON-only output. Falls back to the original text if no
+    `{...}` span is found (json.loads will then fail with a clear error).
+    """
+    match = _JSON_OBJECT_RE.search(text)
+    return match.group(0) if match else text
+
+
 def _parse_summary_json(raw: str, paper_title: str) -> Optional[PaperSummary]:
     cleaned = _clean_json_text(raw)
     try:
         data = json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        logger.warning("Malformed JSON summary for %r: %s\nRaw: %.200s", paper_title, exc, raw)
-        return None
+    except json.JSONDecodeError:
+        # format="json" may have been silently ignored (see _extract_json_object
+        # docstring) — try pulling a {...} span out of surrounding prose before
+        # giving up.
+        extracted = _extract_json_object(cleaned)
+        try:
+            data = json.loads(extracted)
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "Malformed JSON summary for %r: %s\nRaw: %.200s", paper_title, exc, raw
+            )
+            return None
 
     if not isinstance(data, dict):
         logger.warning("Summary for %r was valid JSON but not an object: %r", paper_title, data)

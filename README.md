@@ -1,7 +1,7 @@
 # paper-scout
 
 <div align="center">
-    <img src="banner.scg">
+    <img src="banner.svg">
     <p><em>Generated using Claude.</em></p>
 </div>
 
@@ -9,7 +9,7 @@ paper-scout is an agentic pipeline that takes a research topic as input, searche
 
 The whole thing runs locally through Ollama, using a small model for per paper summarization and a larger model for cross paper synthesis and ideation.
 
-## What it does
+## 🔍 What it does
 
 Give it a query like `"diffusion models for audio"` and it will:
 
@@ -23,14 +23,14 @@ Give it a query like `"diffusion models for audio"` and it will:
 
 You run one command and get one report. No intermediate prompts, no manual steps in between.
 
-## Requirements
+## ⚙️ Requirements
 
 - Python 3.12
 - [Ollama](https://ollama.com) installed and running locally
 - Two pulled models: a small one for summarization and a larger one for synthesis (configurable, see below)
 - Roughly 32GB RAM recommended for comfortable CPU offload of the larger model
 
-## Setup
+## 🛠️ Setup
 
 ```bash
 git clone https://github.com/AmirmasoudCS/paper-scout.git
@@ -48,7 +48,7 @@ ollama pull qwen3.5:9b
 ollama pull gemma4:e4b
 ```
 
-## Usage
+## 🚀 Usage
 
 ```bash
 python -m paper_scout "your research topic here"
@@ -56,11 +56,11 @@ python -m paper_scout "your research topic here"
 
 The report is written to the `outputs/` directory as a markdown file named after your query and the date.
 
-## Configuration
+## 🔧 Configuration
 
 All tunable settings live in `config.yaml`: which sources are enabled, how many papers to pull, ranking weights, which Ollama models to use, and report formatting. Nothing is hardcoded, so you can adjust behavior without touching the code.
 
-## Project structure
+## 📁 Project structure
 
 ```
 📁
@@ -69,48 +69,38 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   └── 📁 pdf_cache
 ├── 📁 paper_scout
 │   ├── 📁 ingestion
-│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 ingest.py
 │   │   ├── 🐍 pdf_fetch.py
 │   │   └── 🐍 section_extract.py
 │   ├── 📁 llm
-│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 ollama_client.py
 │   │   └── 🐍 prompts.py
 │   ├── 📁 ranking
-│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 dedupe.py
 │   │   └── 🐍 rank.py
 │   ├── 📁 report
-│   │   ├── 🐍 __init__.py
 │   │   └── 🐍 report_writer.py
 │   ├── 📁 sources
-│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 arxiv_source.py
 │   │   ├── 🐍 base.py
 │   │   ├── 🐍 huggingface_papers_source.py
 │   │   ├── 🐍 runner.py
 │   │   └── 🐍 semantic_scholar_source.py
 │   ├── 📁 summarize
-│   │   ├── 🐍 __init__.py
 │   │   └── 🐍 summarizer.py
 │   ├── 📁 synthesize
-│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 cross_paper.py
 │   │   └── 🐍 future_work.py
 │   ├── 📁 utils
-│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 config.py
 │   │   ├── 🐍 logging_config.py
 │   │   └── 🐍 models.py
-│   ├── 🐍 __init__.py
 │   ├── 🐍 __main__.py
 │   ├── 🐍 cli.py
 │   └── 🐍 pipeline.py
 ├── 📁 scripts
 │   └── 🐍 smoke_test.py
 ├── 📁 tests
-│   ├── 🐍 conftest.py
 │   ├── 🐍 test_ingestion.py
 │   ├── 🐍 test_llm.py
 │   ├── 🐍 test_pipeline.py
@@ -137,12 +127,12 @@ pytest tests/ -m "not ollama and not network"
 
 Tests marked `ollama` or `network` require a running local Ollama server or live internet access respectively, and are excluded by default so the core suite runs anywhere.
 
-## Notes
+## 📝 Notes
 
 - Every source fetcher and pipeline stage is designed to fail gracefully. One source or paper failing does not stop the whole run.
 - Future work ideation will refuse to run rather than fall back to ungrounded brainstorming if none of the papers have extractable Limitations or Future Work text.
 - A web interface and query history are planned as future additions but are not part of the current scope.
 
-## License
+## ⚖️ License
 
 [MIT](./LICENSE)

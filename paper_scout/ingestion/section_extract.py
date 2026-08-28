@@ -203,6 +203,8 @@ def _find_headings(full_text: str) -> list[tuple[int, int, str]]:
         # Skip short/noisy false positives like "A" or "I I"
         if len(heading_text) < 4:
             continue
+        if not _looks_like_heading_case(heading_text):
+            continue
         headings.append((line_start, line_end, heading_text))
     return headings
 

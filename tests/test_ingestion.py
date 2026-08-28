@@ -348,3 +348,29 @@ def test_heading_regex_does_not_eat_leading_capital_letter():
     assert "onclusion" not in raw_headings
     assert "Methods" in raw_headings
     assert "ethods" not in raw_headings
+
+_LOWERCASE_CONNECTORS = {
+    "a", "an", "and", "as", "at", "by", "for", "from", "in",
+    "of", "on", "or", "the", "to", "with",
+}
+
+
+def _looks_like_heading_case(heading_text: str) -> bool:
+    """Real section headings are Title Case or ALL CAPS. Ordinary wrapped
+    body sentences that happen to lack trailing punctuation (and so still
+    pass the character-class check) are not — this rejects those, so
+    they can't be mistaken for a section boundary."""
+    words = heading_text.split()
+    if not words:
+        return False
+    if heading_text.isupper():
+        return True
+    for i, word in enumerate(words):
+        core = word.strip("&/,'-")
+        if not core:
+            continue
+        if i != 0 and core.lower() in _LOWERCASE_CONNECTORS:
+            continue
+        if not core[0].isupper():
+            return False
+    return True

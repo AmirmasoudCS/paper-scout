@@ -163,12 +163,24 @@ class OllamaClient:
             "model": model_cfg.name,
             "messages": messages,
             "stream": False,
+            # Disable "thinking" mode for reasoning models (e.g. qwen3.5). Must be a
+            # TOP-LEVEL field, not inside `options` — Ollama silently ignores
+            # options.think for the /api/chat endpoint on these models and the
+            # model burns its entire num_predict budget on invisible reasoning,
+            # leaving message.content empty. See ollama/ollama#14793.
+            "think": False,
             "options": {
                 "temperature": model_cfg.temperature,
                 "num_predict": model_cfg.max_tokens,
             },
         }
         if json_mode:
+            # NOTE: format="json" is known to be silently ignored on some
+            # thinking-capable models (e.g. qwen3.5) once think=False is set
+            # (ollama/ollama#14645). We still request it — it's honored on
+            # non-thinking models and is harmless when ignored — but callers
+            # doing json_mode should parse leniently rather than assume
+            # strict JSON-only output (see summarize.summarizer._parse_summary_json).
             payload["format"] = "json"
 
         for attempt in range(1, max_retries + 1):
@@ -181,6 +193,21 @@ class OllamaClient:
                 response.raise_for_status()
                 data = response.json()
                 content = data.get("message", {}).get("content")
+                if not content:
+                    # Rare fallback: some Ollama versions/models still route output
+                    # to the "thinking" field even with think=False (ollama/ollama#14716).
+                    # Recover it rather than silently failing, but flag it loudly since
+                    # it means the client's think:False request wasn't fully honored.
+                    thinking = data.get("message", {}).get("thinking")
+                    if thinking:
+                        logger.warning(
+                            "Ollama %s model %r returned content in 'thinking' field "
+                            "instead of 'content' despite think=False — using it anyway "
+                            "(see ollama/ollama#14716)",
+                            tier,
+                            model_cfg.name,
+                        )
+                        content = thinking
                 if not content:
                     logger.warning(
                         "Ollama %s model %r returned an empty response", tier, model_cfg.name

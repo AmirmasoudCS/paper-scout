@@ -1,6 +1,6 @@
 # ── Search Query Defaults ─────────────────────────────
 search:
-  max_papers_per_source: 20      # how many results to pull from each source before ranking
+  max_papers_per_source: 10      # how many results to pull from each source before ranking
   final_paper_count: 10          # how many papers survive ranking to go into the full pipeline
   date_range_days: 365           # only consider papers published within this window ("newest")
   min_citation_count: 0          # filter floor; 0 = don't filter (new papers have few citations anyway)

@@ -1,0 +1,102 @@
+<svg viewBox="0 0 1200 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="source" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="process" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="llm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="output" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#bg)"/>
+
+  <text x="40" y="45" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#f8fafc">paper-scout</text>
+  <text x="40" y="68" font-family="Arial, sans-serif" font-size="14" fill="#94a3b8">query in, grounded research report out</text>
+
+  <!-- Query -->
+  <g>
+    <circle cx="65" cy="160" r="34" fill="#f8fafc"/>
+    <text x="65" y="155" font-family="Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">your</text>
+    <text x="65" y="170" font-family="Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">query</text>
+  </g>
+  <line x1="99" y1="160" x2="128" y2="160" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 1: Sources -->
+  <g>
+    <rect x="130" y="120" width="130" height="80" rx="10" fill="url(#source)"/>
+    <text x="195" y="150" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#082f49" text-anchor="middle">Search Sources</text>
+    <text x="195" y="168" font-family="Arial, sans-serif" font-size="10" fill="#082f49" text-anchor="middle">arXiv</text>
+    <text x="195" y="181" font-family="Arial, sans-serif" font-size="10" fill="#082f49" text-anchor="middle">Semantic Scholar</text>
+    <text x="195" y="194" font-family="Arial, sans-serif" font-size="10" fill="#082f49" text-anchor="middle">HF Papers</text>
+  </g>
+  <line x1="260" y1="160" x2="288" y2="160" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 2: Dedupe and Rank -->
+  <g>
+    <rect x="290" y="120" width="130" height="80" rx="10" fill="url(#source)"/>
+    <text x="355" y="152" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#082f49" text-anchor="middle">Dedupe</text>
+    <text x="355" y="170" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#082f49" text-anchor="middle">and Rank</text>
+    <text x="355" y="188" font-family="Arial, sans-serif" font-size="10" fill="#082f49" text-anchor="middle">top N papers</text>
+  </g>
+  <line x1="420" y1="160" x2="448" y2="160" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 3: Ingest -->
+  <g>
+    <rect x="450" y="120" width="130" height="80" rx="10" fill="url(#process)"/>
+    <text x="515" y="152" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1e1b4b" text-anchor="middle">Ingest PDFs</text>
+    <text x="515" y="170" font-family="Arial, sans-serif" font-size="10" fill="#1e1b4b" text-anchor="middle">extract Limitations</text>
+    <text x="515" y="184" font-family="Arial, sans-serif" font-size="10" fill="#1e1b4b" text-anchor="middle">and Future Work</text>
+  </g>
+  <line x1="580" y1="160" x2="608" y2="160" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 4: Summarize -->
+  <g>
+    <rect x="610" y="120" width="130" height="80" rx="10" fill="url(#llm)"/>
+    <text x="675" y="152" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#431407" text-anchor="middle">Summarize</text>
+    <text x="675" y="170" font-family="Arial, sans-serif" font-size="10" fill="#431407" text-anchor="middle">small local model</text>
+    <text x="675" y="184" font-family="Arial, sans-serif" font-size="10" fill="#431407" text-anchor="middle">per paper</text>
+  </g>
+  <line x1="740" y1="160" x2="768" y2="160" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 5: Synthesize -->
+  <g>
+    <rect x="770" y="120" width="130" height="80" rx="10" fill="url(#llm)"/>
+    <text x="835" y="152" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#431407" text-anchor="middle">Synthesize</text>
+    <text x="835" y="170" font-family="Arial, sans-serif" font-size="10" fill="#431407" text-anchor="middle">large local model</text>
+    <text x="835" y="184" font-family="Arial, sans-serif" font-size="10" fill="#431407" text-anchor="middle">grounded ideas</text>
+  </g>
+  <line x1="900" y1="160" x2="928" y2="160" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 6: Report -->
+  <g>
+    <rect x="930" y="120" width="150" height="80" rx="10" fill="url(#output)"/>
+    <text x="1005" y="152" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#052e16" text-anchor="middle">Markdown Report</text>
+    <text x="1005" y="170" font-family="Arial, sans-serif" font-size="10" fill="#052e16" text-anchor="middle">summaries, synthesis,</text>
+    <text x="1005" y="184" font-family="Arial, sans-serif" font-size="10" fill="#052e16" text-anchor="middle">future work ideas</text>
+  </g>
+
+  <!-- caption -->
+  <text x="600" y="260" font-family="Arial, sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle">
+    one query, no intermediate prompts, one grounded report
+  </text>
+  <text x="600" y="285" font-family="Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">
+    runs entirely on local hardware via Ollama
+  </text>
+</svg>

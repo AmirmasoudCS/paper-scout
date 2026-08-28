@@ -59,7 +59,7 @@ _STOP_KEYWORDS: set[str] = {
 _MAX_SECTION_CHARS = 6000
 
 _HEADING_LINE_RE = re.compile(
-    r"^(?:[IVXLCM]+\.?|\d{1,2}(?:\.\d{1,2})*\.?)?\s*"
+    r"^(?:(?:[IVXLCM]+|\d{1,2}(?:\.\d{1,2})*)(?:\.\s+|\)\s+|\s+))?"
     r"([A-Za-z][A-Za-z &/,'-]{2,70})\s*$"
 )
 

@@ -62,7 +62,8 @@ Conclusion (if available):
 Author-stated Limitations (if available):
 {limitations}
 
-Respond with ONLY the JSON object."""
+Respond with ONLY the JSON object. Do not include any text, explanation, or reasoning \
+before or after the JSON. Your entire response must be parseable as JSON."""
 
     return SUMMARIZE_SYSTEM_PROMPT, user_prompt
 

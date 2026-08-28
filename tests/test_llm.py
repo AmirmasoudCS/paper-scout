@@ -268,6 +268,52 @@ def test_generate_retries_then_returns_none_on_repeated_failure(monkeypatch):
     assert call_count["n"] == 3  # default max_retries
 
 
+def test_generate_sends_think_false_as_top_level_field(monkeypatch):
+    """Regression test for ollama/ollama#14793: qwen3.5-family models silently
+    ignore think:false inside `options`, burning the whole token budget on
+    invisible reasoning. It must be sent as a top-level request field."""
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": "ok"}}
+
+    calls = []
+
+    def fake_post(url, json, timeout):
+        calls.append(json)
+        return FakeResponse()
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    client = OllamaClient.from_config(SAMPLE_CONFIG)
+
+    client.generate_small("Say hello.")
+
+    assert calls[0]["think"] is False
+    assert "think" not in calls[0]["options"]
+
+
+def test_generate_falls_back_to_thinking_field_when_content_empty(monkeypatch):
+    """Regression test for ollama/ollama#14716: some responses route the
+    actual output into message.thinking instead of message.content even
+    with think=False. Recover it rather than treating it as a failure."""
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"message": {"content": "", "thinking": "The answer is 42."}}
+
+    monkeypatch.setattr(requests, "post", lambda url, json, timeout: FakeResponse())
+    client = OllamaClient.from_config(SAMPLE_CONFIG)
+
+    result = client.generate_small("What is the answer?")
+    assert result == "The answer is 42."
+
+
 def test_generate_returns_none_on_empty_response_content(monkeypatch):
     class FakeResponse:
         def raise_for_status(self):

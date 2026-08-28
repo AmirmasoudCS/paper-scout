@@ -332,3 +332,19 @@ def test_extract_sections_recovers_limitations_from_two_column_pdf(two_column_pd
     assert sections.limitations is not None
     assert "left column" in sections.limitations
     assert "right column" in sections.limitations
+
+def test_heading_regex_does_not_eat_leading_capital_letter():
+    """Regression test: words starting with a Roman-numeral letter
+    (I, V, X, L, C, M) must not have that letter mistaken for a
+    numbering prefix and stripped — e.g. 'Conclusion' must not become
+    'onclusion', 'Methods' must not become 'ethods'."""
+    from paper_scout.ingestion.section_extract import _find_headings
+
+    text = "Conclusion\nWe show that our method works well.\n\nMethods\nWe used a dataset of..."
+    headings = _find_headings(text)
+    raw_headings = {h[2] for h in headings}
+
+    assert "Conclusion" in raw_headings
+    assert "onclusion" not in raw_headings
+    assert "Methods" in raw_headings
+    assert "ethods" not in raw_headings

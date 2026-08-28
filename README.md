@@ -63,17 +63,71 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 ## Project structure
 
 ```
-paper_scout/
-├── sources/       # arXiv, Semantic Scholar, Hugging Face Papers fetchers
-├── ranking/       # dedup and composite ranking
-├── ingestion/      # PDF download and section extraction
-├── llm/           # Ollama client and prompt templates
-├── summarize/      # per paper summarization
-├── synthesize/     # cross paper synthesis and grounded future work ideation
-├── report/         # markdown report writer
-├── pipeline.py     # LangGraph orchestration of the full pipeline
-└── cli.py          # command line entry point
+📁
+├── 📁 log
+├── 📁 outputs
+│   └── 📁 pdf_cache
+├── 📁 paper_scout
+│   ├── 📁 ingestion
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 ingest.py
+│   │   ├── 🐍 pdf_fetch.py
+│   │   └── 🐍 section_extract.py
+│   ├── 📁 llm
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 ollama_client.py
+│   │   └── 🐍 prompts.py
+│   ├── 📁 ranking
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 dedupe.py
+│   │   └── 🐍 rank.py
+│   ├── 📁 report
+│   │   ├── 🐍 __init__.py
+│   │   └── 🐍 report_writer.py
+│   ├── 📁 sources
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 arxiv_source.py
+│   │   ├── 🐍 base.py
+│   │   ├── 🐍 huggingface_papers_source.py
+│   │   ├── 🐍 runner.py
+│   │   └── 🐍 semantic_scholar_source.py
+│   ├── 📁 summarize
+│   │   ├── 🐍 __init__.py
+│   │   └── 🐍 summarizer.py
+│   ├── 📁 synthesize
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 cross_paper.py
+│   │   └── 🐍 future_work.py
+│   ├── 📁 utils
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 config.py
+│   │   ├── 🐍 logging_config.py
+│   │   └── 🐍 models.py
+│   ├── 🐍 __init__.py
+│   ├── 🐍 __main__.py
+│   ├── 🐍 cli.py
+│   └── 🐍 pipeline.py
+├── 📁 scripts
+│   └── 🐍 smoke_test.py
+├── 📁 tests
+│   ├── 🐍 conftest.py
+│   ├── 🐍 test_ingestion.py
+│   ├── 🐍 test_llm.py
+│   ├── 🐍 test_pipeline.py
+│   ├── 🐍 test_ranking.py
+│   ├── 🐍 test_report.py
+│   ├── 🐍 test_sources.py
+│   ├── 🐍 test_summarize.py
+│   └── 🐍 test_synthesize.py
+├── 📄 banner.svg
+├── 📄 config.yaml
+├── ⚖️ LICENSE
+├── ⚙️ pyproject.toml
+├── 📄 pytest.ini
+├── 📘 README.md
+└── 📝 requirements.txt
 ```
+> Generated using [Tree Printer](https://github.com/AmirmasoudCS/Tree-Printer.git)
 
 Every module is independently tested. Run the full test suite with:
 

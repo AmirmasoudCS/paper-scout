@@ -116,6 +116,19 @@ def test_summarize_paper_strips_markdown_fences():
 # ── summarize_paper: graceful degradation ────────────────────────────
 
 
+def test_summarize_paper_extracts_json_from_surrounding_prose():
+    """Regression test for ollama/ollama#14645: format='json' can be silently
+    ignored on thinking-capable models once think=False is set, so the model
+    may wrap its JSON in prose despite json_mode. Parser should recover it."""
+    wrapped = f"Sure, here is the summary:\n\n{VALID_SUMMARY_JSON}\n\nLet me know if you need anything else!"
+    client = _StubClient(wrapped)
+
+    summary = summarize_paper(_sample_paper(), client)
+
+    assert summary is not None
+    assert summary.problem == "Free-form LLM future-work ideation tends to be generic."
+
+
 def test_summarize_paper_returns_none_when_model_unreachable():
     client = _StubClient(None)  # simulates OllamaClient.generate_small returning None
 

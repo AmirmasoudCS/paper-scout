@@ -161,6 +161,19 @@ def render_report(pipeline_run: PipelineRun, config: dict) -> str:
         )
     lines.append("")
 
+    if pipeline_run.future_work_ideas_inferred:
+        lines.append("## Future Work Ideas (Inferred)")
+        lines.append("")
+        lines.append(
+            "*The directions below are inferred by the model from each paper's problem/method/"
+            "key-result summary, for papers that had no extractable Limitations/Future Work "
+            "section. Unlike the section above, these are not statements the authors themselves "
+            "made — treat them as speculative.*"
+        )
+    lines.append("")
+    lines.append(pipeline_run.future_work_ideas_inferred.strip())
+    lines.append("")
+
     lines.append("## Papers")
     lines.append("")
     if not pipeline_run.papers:

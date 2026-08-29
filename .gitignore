@@ -223,3 +223,6 @@ log/*
 
 # Cache for the pdfs of the model
 outputs/pdf_cache
+
+# PDFs
+*.pdf

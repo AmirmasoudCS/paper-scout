@@ -269,6 +269,7 @@ def test_run_pipeline_wires_all_stages_in_order(monkeypatch, tmp_path, mock_clie
     assert result.papers[0].summary.problem == "P"
     assert result.cross_paper_synthesis == "Fake cross-paper synthesis."
     assert result.future_work_ideas == "Fake future work ideas."
+    assert result.future_work_ideas_inferred == "Fake inferred future work ideas."
     assert result.report_path is not None
 
 

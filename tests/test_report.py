@@ -263,3 +263,20 @@ def test_write_report_falls_back_to_config_output_dir(tmp_path, monkeypatch):
 
     assert path.resolve() == (tmp_path / "my_outputs" / "grounded-future-work-ideation_2024-06-01.md").resolve()
     assert path.exists()
+
+def test_render_report_marks_papers_with_no_grounding_text():
+    paper = _paper_with_summary()
+    paper.extracted_sections = ExtractedSections()  # no limitations, no future_work
+    run = _sample_pipeline_run([paper])
+    report = render_report(run, SAMPLE_CONFIG)
+
+    assert "no extractable Limitations/Future Work section" in report
+
+
+def test_render_report_does_not_mark_papers_with_grounding_text():
+    paper = _paper_with_summary()
+    paper.extracted_sections = ExtractedSections(limitations="Some limitation.")
+    run = _sample_pipeline_run([paper])
+    report = render_report(run, SAMPLE_CONFIG)
+
+    assert "no extractable Limitations/Future Work section" not in report

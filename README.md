@@ -63,44 +63,60 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 ## 📁 Project structure
 
 ```
-📁
+📁 
 ├── 📁 log
 ├── 📁 outputs
-│   └── 📁 pdf_cache
+│   ├── 📘 ai-in-architecture_2026-08-28.md
+│   ├── 📘 cultural-reasoning-of-llms-for-resource-constrained-languages_2026-08-28.md
+│   ├── 📘 cultural-reasoning-of-llms-for-resource-constrained-languages_2026-08-29.md
+│   └── 📘 sensory-design-in-university-campuses_2026-08-29.md
 ├── 📁 paper_scout
 │   ├── 📁 ingestion
+│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 ingest.py
 │   │   ├── 🐍 pdf_fetch.py
 │   │   └── 🐍 section_extract.py
 │   ├── 📁 llm
+│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 ollama_client.py
 │   │   └── 🐍 prompts.py
 │   ├── 📁 ranking
+│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 dedupe.py
 │   │   └── 🐍 rank.py
 │   ├── 📁 report
+│   │   ├── 🐍 __init__.py
 │   │   └── 🐍 report_writer.py
 │   ├── 📁 sources
+│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 arxiv_source.py
 │   │   ├── 🐍 base.py
 │   │   ├── 🐍 huggingface_papers_source.py
 │   │   ├── 🐍 runner.py
 │   │   └── 🐍 semantic_scholar_source.py
 │   ├── 📁 summarize
+│   │   ├── 🐍 __init__.py
 │   │   └── 🐍 summarizer.py
 │   ├── 📁 synthesize
+│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 cross_paper.py
 │   │   └── 🐍 future_work.py
 │   ├── 📁 utils
+│   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 config.py
 │   │   ├── 🐍 logging_config.py
 │   │   └── 🐍 models.py
+│   ├── 🐍 __init__.py
 │   ├── 🐍 __main__.py
 │   ├── 🐍 cli.py
 │   └── 🐍 pipeline.py
 ├── 📁 scripts
+│   ├── 🐍 compare_extraction_methods.py
+│   ├── 🐍 diagnose_headings.py
+│   ├── 🐍 recheck_extraction.py
 │   └── 🐍 smoke_test.py
 ├── 📁 tests
+│   ├── 🐍 conftest.py
 │   ├── 🐍 test_ingestion.py
 │   ├── 🐍 test_llm.py
 │   ├── 🐍 test_pipeline.py

@@ -69,6 +69,7 @@ class PipelineState(TypedDict, total=False):
     run_timestamp: datetime
     raw_papers: list[Paper]
     papers: list[Paper]
+    source_stats: dict
     cross_paper_synthesis: Optional[str]
     future_work_ideas: Optional[str]
     future_work_ideas_inferred: Optional[str]

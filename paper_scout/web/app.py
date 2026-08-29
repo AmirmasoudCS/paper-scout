@@ -60,6 +60,7 @@ def index(request: Request):
         {
             "runs": runs,
             "selected_run_id": selected.run_id if selected else None,
+            "run": selected,
             "report_html": report_html,
         },
     )

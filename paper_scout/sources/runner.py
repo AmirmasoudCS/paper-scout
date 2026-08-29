@@ -43,23 +43,47 @@ def build_source_fetchers(config: dict) -> list[PaperSource]:
     return fetchers
 
 
+def fetch_all_sources_with_stats(query: str, config: dict) -> tuple[list[Paper], dict]:
+    """
+    Same as fetch_all_sources(), but also returns per-source stats for
+    run metadata: how many papers each enabled source found, and the
+    error message if a source failed entirely (including construction-
+    time failures, e.g. a bad API key). Kept as a separate function so
+    fetch_all_sources() and its existing callers/tests are unaffected.
+    """
+    fetchers = build_source_fetchers(config)
+    max_results = config["search"]["max_papers_per_source"]
+
+    all_papers: list[Paper] = []
+    stats: dict[str, dict] = {}
+
+    for fetcher in fetchers:
+        try:
+            results = fetcher.search(query, max_results=max_results)
+            logger.info("%s: fetched %d papers", fetcher.name, len(results))
+            all_papers.extend(results)
+            stats[fetcher.name] = {"enabled": True, "papers_found": len(results)}
+        except Exception as exc:
+            logger.error("Source %s raised unexpectedly, skipping it: %s", fetcher.name, exc)
+            stats[fetcher.name] = {"enabled": True, "papers_found": 0, "error": str(exc)}
+            continue
+
+    sources_cfg = config["sources"]
+    for source_name in ("arxiv", "semantic_scholar", "huggingface_papers"):
+        if source_name not in stats:
+            stats[source_name] = {
+                "enabled": sources_cfg.get(source_name, {}).get("enabled", True),
+                "papers_found": 0,
+            }
+
+    return all_papers, stats
+
+
 def fetch_all_sources(query: str, config: dict) -> list[Paper]:
     """
     Run `query` against every enabled source and return the combined,
     not-yet-deduped raw results. One source failing (even at
     construction time) never stops the others.
     """
-    fetchers = build_source_fetchers(config)
-    max_results = config["search"]["max_papers_per_source"]
-
-    all_papers: list[Paper] = []
-    for fetcher in fetchers:
-        try:
-            results = fetcher.search(query, max_results=max_results)
-            logger.info("%s: fetched %d papers", fetcher.name, len(results))
-            all_papers.extend(results)
-        except Exception as exc:
-            logger.error("Source %s raised unexpectedly, skipping it: %s", fetcher.name, exc)
-            continue
-
-    return all_papers
+    papers, _stats = fetch_all_sources_with_stats(query, config)
+    return papers

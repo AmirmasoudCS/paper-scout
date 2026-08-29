@@ -34,6 +34,15 @@ def slugify(text: str) -> str:
     slug = _SLUG_STRIP_RE.sub("-", text.lower()).strip("-")
     return slug or "untitled"
 
+def build_run_dir_name(pipeline_run: PipelineRun) -> str:
+    """Folder name for one pipeline run's self-contained output directory."""
+    query_slug = slugify(pipeline_run.query)
+    run_date = (
+        pipeline_run.run_timestamp.date()
+        if hasattr(pipeline_run.run_timestamp, "date")
+        else date_type.today()
+    )
+    return f"{query_slug}_{run_date.isoformat()}"
 
 def _anchor(text: str) -> str:
     """

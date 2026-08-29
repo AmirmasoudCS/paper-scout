@@ -142,6 +142,7 @@ def node_write_report(state: PipelineState) -> dict:
         papers=state["papers"],
         cross_paper_synthesis=state.get("cross_paper_synthesis"),
         future_work_ideas=state.get("future_work_ideas"),
+        future_work_ideas_inferred=state.get("future_work_ideas_inferred"),
     )
     write_report(run, state["config"])
     return {"pipeline_run": run}

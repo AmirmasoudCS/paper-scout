@@ -20,6 +20,8 @@ from typing import Optional
 
 import requests
 
+import shutil
+
 from paper_scout.utils.models import Paper
 
 logger = logging.getLogger(__name__)
@@ -133,4 +135,38 @@ def fetch_pdfs(
     results: dict[str, Optional[Path]] = {}
     for paper in papers:
         results[paper.dedupe_key()] = fetch_pdf(paper, cache_dir, timeout_seconds)
+    return results
+
+def copy_cached_pdfs(
+    papers: list[Paper],
+    cache_dir: str | Path,
+    dest_dir: str | Path,
+) -> dict[str, Optional[Path]]:
+    """
+    Copy each paper's already-cached PDF (if present) into dest_dir,
+    for assembling a self-contained per-query output folder. Does NOT
+    trigger any download — papers not already in cache_dir are skipped
+    (None in the result) rather than fetched, since ingestion should
+    already have run by the time this is called.
+
+    Returns a dict keyed by paper.dedupe_key() mapping to the copied
+    Path (or None if there was nothing cached for that paper).
+    """
+    cache_dir = Path(cache_dir)
+    dest_dir = Path(dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    results: dict[str, Optional[Path]] = {}
+    for paper in papers:
+        src = _cache_path(paper, cache_dir)
+        if not src.exists():
+            results[paper.dedupe_key()] = None
+            continue
+        dest = dest_dir / src.name
+        try:
+            shutil.copy2(src, dest)
+            results[paper.dedupe_key()] = dest
+        except OSError as exc:
+            logger.warning("Failed to copy cached PDF %s -> %s: %s", src, dest, exc)
+            results[paper.dedupe_key()] = None
     return results

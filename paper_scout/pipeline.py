@@ -3,8 +3,9 @@ paper_scout.pipeline
 
 Phase 8 — wires Phases 1-7 into a single LangGraph state machine:
 
-    fetch_sources -> dedupe_and_rank -> ingest -> summarize
-        -> cross_paper_synthesis -> future_work -> write_report
+    setup_run -> fetch_sources -> dedupe_and_rank -> ingest -> summarize
+        -> cross_paper_synthesis -> future_work -> inferred_future_work
+        -> write_report
 
 True end-to-end per the project's UX goal: one query in, nothing shown
 until the final report is ready (no intermediate prompts).
@@ -18,11 +19,20 @@ a plain try/except around the embedding-based ranking step since a
 corrupted/uncached embedding model is a real failure mode (see the
 project's recurring ISP-blocking issue) and we'd rather fall back to
 unranked papers than crash the whole run.
+
+Output layout: every run gets its own self-contained directory
+(outputs/<query-slug>_<date>/) containing report.md, report.pdf, and a
+pdfs/ subfolder with each paper's downloaded PDF. There is no shared
+cross-run PDF cache — setup_run computes the run directory first,
+specifically so node_ingest can download straight into <run_dir>/pdfs/
+instead of a shared cache.
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime
+from pathlib import Path
 from typing import Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -31,20 +41,19 @@ from paper_scout.ingestion.ingest import ingest_papers
 from paper_scout.llm.ollama_client import OllamaClient
 from paper_scout.ranking.dedupe import dedupe_papers
 from paper_scout.ranking.rank import rank_papers
-from paper_scout.report.report_writer import write_report
+from paper_scout.report.report_writer import (
+    build_run_dir_name_for,
+    write_report,
+    write_report_pdf,
+)
 from paper_scout.sources.runner import fetch_all_sources
 from paper_scout.summarize.summarizer import summarize_papers
 from paper_scout.synthesize.cross_paper import synthesize_cross_paper
-from paper_scout.synthesize.future_work import generate_future_work_ideas
-from paper_scout.utils.models import Paper, PipelineRun
 from paper_scout.synthesize.future_work import (
     generate_future_work_ideas,
     generate_inferred_future_work_ideas,
 )
-
-from pathlib import Path
-from paper_scout.ingestion.pdf_fetch import copy_cached_pdfs
-from paper_scout.report.report_writer import build_run_dir_name, write_report
+from paper_scout.utils.models import Paper, PipelineRun
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +62,8 @@ class PipelineState(TypedDict, total=False):
     query: str
     config: dict
     client: OllamaClient
+    run_dir: Path
+    run_timestamp: datetime
     raw_papers: list[Paper]
     papers: list[Paper]
     cross_paper_synthesis: Optional[str]
@@ -62,6 +73,18 @@ class PipelineState(TypedDict, total=False):
 
 
 # ── Nodes ────────────────────────────────────────────────────────────
+
+
+def node_setup_run(state: PipelineState) -> dict:
+    """Computes the self-contained run directory up front, before
+    fetching/ingestion, so PDFs can be downloaded straight into
+    <run_dir>/pdfs/ instead of a shared cross-run cache."""
+    run_timestamp = datetime.utcnow()
+    report_cfg = state["config"].get("report", {})
+    base_output_dir = Path(report_cfg.get("output_dir", "outputs"))
+    run_dir = base_output_dir / build_run_dir_name_for(state["query"], run_timestamp)
+    logger.info("Run output directory: %s", run_dir)
+    return {"run_dir": run_dir, "run_timestamp": run_timestamp}
 
 
 def node_fetch_sources(state: PipelineState) -> dict:
@@ -89,10 +112,6 @@ def node_dedupe_and_rank(state: PipelineState) -> dict:
             date_range_days=search_cfg["date_range_days"],
         )
     except Exception as exc:
-        # Ranking depends on downloading/loading an embedding model — a real
-        # failure mode given this project's recurring ISP-blocking issue.
-        # Fall back to the deduped-but-unranked list rather than losing the
-        # whole run over it.
         logger.error("Ranking failed (%s) — falling back to unranked deduped papers", exc)
         ranked = deduped
 
@@ -106,7 +125,11 @@ def node_dedupe_and_rank(state: PipelineState) -> dict:
 
 def node_ingest(state: PipelineState) -> dict:
     logger.info("Ingesting PDFs/sections for %d papers", len(state["papers"]))
-    papers = ingest_papers(state["papers"], state["config"]["ingestion"])
+    # Per-run ingestion config: PDFs go straight into this run's own
+    # pdfs/ folder, not a shared cross-run cache.
+    ingestion_cfg = dict(state["config"]["ingestion"])
+    ingestion_cfg["pdf_cache_dir"] = str(state["run_dir"] / "pdfs")
+    papers = ingest_papers(state["papers"], ingestion_cfg)
     return {"papers": papers}
 
 
@@ -143,20 +166,16 @@ def node_inferred_future_work(state: PipelineState) -> dict:
 def node_write_report(state: PipelineState) -> dict:
     run = PipelineRun(
         query=state["query"],
+        run_timestamp=state["run_timestamp"],
         papers=state["papers"],
         cross_paper_synthesis=state.get("cross_paper_synthesis"),
         future_work_ideas=state.get("future_work_ideas"),
         future_work_ideas_inferred=state.get("future_work_ideas_inferred"),
     )
 
-    report_cfg = state["config"].get("report", {})
-    base_output_dir = Path(report_cfg.get("output_dir", "outputs"))
-    run_dir = base_output_dir / build_run_dir_name(run)
-
+    run_dir = state["run_dir"]
     write_report(run, state["config"], output_dir=run_dir, filename="report.md")
-
-    pdf_cache_dir = state["config"]["ingestion"]["pdf_cache_dir"]
-    copy_cached_pdfs(state["papers"], cache_dir=pdf_cache_dir, dest_dir=run_dir / "pdfs")
+    write_report_pdf(run, state["config"], output_dir=run_dir, filename="report.pdf")
 
     return {"pipeline_run": run}
 
@@ -167,6 +186,7 @@ def node_write_report(state: PipelineState) -> dict:
 def build_pipeline_graph():
     graph = StateGraph(PipelineState)
 
+    graph.add_node("setup_run", node_setup_run)
     graph.add_node("fetch_sources", node_fetch_sources)
     graph.add_node("dedupe_and_rank", node_dedupe_and_rank)
     graph.add_node("ingest", node_ingest)
@@ -176,7 +196,8 @@ def build_pipeline_graph():
     graph.add_node("inferred_future_work", node_inferred_future_work)
     graph.add_node("write_report", node_write_report)
 
-    graph.add_edge(START, "fetch_sources")
+    graph.add_edge(START, "setup_run")
+    graph.add_edge("setup_run", "fetch_sources")
     graph.add_edge("fetch_sources", "dedupe_and_rank")
     graph.add_edge("dedupe_and_rank", "ingest")
     graph.add_edge("ingest", "summarize")

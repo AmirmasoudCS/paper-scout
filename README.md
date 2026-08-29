@@ -93,9 +93,13 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 ## 📁 Project structure
 
 ```
- 
+📁 
 ├── 📁 log
 ├── 📁 outputs
+│   └── 📁 neural-networks-architecture-and-their-impact-on-accuracy_2026-08-29
+│       ├── 📁 pdfs
+│       ├── 📘 report.md
+│       └── 🧩 run_metadata.json
 ├── 📁 paper_scout
 │   ├── 📁 ingestion
 │   │   ├── 🐍 __init__.py

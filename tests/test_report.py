@@ -274,12 +274,11 @@ def test_render_report_marks_papers_with_no_grounding_text():
     run = _sample_pipeline_run([paper])
     report = render_report(run, SAMPLE_CONFIG)
 
-    assert "no extractable Limitations/Future Work section" in report
+    assert "This paper had no extractable Limitations/Future Work section" in report
 
 
 def test_render_report_does_not_mark_papers_with_grounding_text():
-    # uses the fixture's default grounded state — no override needed
     run = _sample_pipeline_run([_paper_with_summary()])
     report = render_report(run, SAMPLE_CONFIG)
 
-    assert "no extractable Limitations/Future Work section" not in report
+    assert "This paper had no extractable Limitations/Future Work section" not in report

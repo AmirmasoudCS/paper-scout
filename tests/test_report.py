@@ -81,6 +81,21 @@ def test_slugify_empty_string_falls_back_to_untitled():
     assert slugify("") == "untitled"
     assert slugify("!!!") == "untitled"
 
+from paper_scout.report.report_writer import build_run_dir_name
+
+
+def test_build_run_dir_name_matches_slug_and_date():
+    run = _sample_pipeline_run()
+    assert build_run_dir_name(run) == "grounded-future-work-ideation_2024-06-01"
+
+
+def test_write_report_accepts_explicit_filename(tmp_path):
+    run = _sample_pipeline_run()
+
+    path = write_report(run, SAMPLE_CONFIG, output_dir=tmp_path, filename="report.md")
+
+    assert path == tmp_path / "report.md"
+    assert path.exists()
 
 # ── render_report: structure ─────────────────────────────────────────
 

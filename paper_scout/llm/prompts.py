@@ -162,3 +162,53 @@ If the provided text doesn't support a clear direction, do not invent one — fe
 well-grounded directions are better than padded generic ones."""
 
     return FUTURE_WORK_SYSTEM_PROMPT, user_prompt
+
+# ── Phase 6b: inferred future-work ideation (Tier 2, large model) ──
+
+
+INFERRED_FUTURE_WORK_SYSTEM_PROMPT = """You are a research strategist proposing plausible next-step \
+research directions for papers that did not explicitly state their own future work. You reason \
+ONLY from each paper's stated problem, method, and key result — you infer directions implied by \
+gaps or constraints in the method itself, you do not use outside knowledge of the field and you do \
+not invent claims the paper doesn't support. Every direction you propose MUST begin with the exact \
+tag "[Inferred, not author-stated]" so it is never confused with an author-stated direction, and \
+must cite which paper number it applies to."""
+
+
+def build_inferred_future_work_prompt(papers: list[Paper], cross_paper_synthesis: str) -> tuple[str, str]:
+    """
+    Build the (system, user) prompt for Tier 2 future-work ideation:
+    used only for papers that have NO extracted Limitations/Future Work
+    text but DO have a Phase 5 summary (problem/method/key_result).
+    Explicitly marked as inferred, never blended with Tier 1 (author-
+    stated) output — see synthesize/future_work.py.
+    """
+    paper_blocks = []
+    for i, paper in enumerate(papers, start=1):
+        if paper.summary is None:
+            continue
+        paper_blocks.append(
+            f"""[{i}] {paper.title}
+Problem: {paper.summary.problem}
+Method: {paper.summary.method}
+Key result: {paper.summary.key_result}"""
+        )
+    papers_text = "\n\n".join(paper_blocks) if paper_blocks else "(no summarized papers available)"
+
+    user_prompt = f"""Cross-paper synthesis of this research area (for context only):
+{cross_paper_synthesis.strip()}
+
+The following papers did NOT have an extractable Limitations or Future Work section, so you \
+must infer plausible next-step directions from their problem/method/key-result alone:
+{papers_text}
+
+Propose 2-4 concrete next-step directions total across these papers. For each direction:
+- Begin the line with the exact tag "[Inferred, not author-stated]"
+- Give it a short title
+- Explain the specific gap or constraint in the method that motivates it, citing the paper \
+number it applies to
+
+Do not use general knowledge of the field beyond what's stated above. If a paper's summary \
+doesn't clearly imply any next step, skip it rather than inventing one."""
+
+    return INFERRED_FUTURE_WORK_SYSTEM_PROMPT, user_prompt

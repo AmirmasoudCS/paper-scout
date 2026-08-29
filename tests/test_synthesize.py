@@ -17,6 +17,7 @@ from paper_scout.summarize.summarizer import summarize_paper
 from paper_scout.synthesize.cross_paper import synthesize_cross_paper
 from paper_scout.synthesize.future_work import generate_future_work_ideas
 from paper_scout.utils.models import ExtractedSections, Paper, PaperSummary, SourceName
+from paper_scout.synthesize.future_work import generate_inferred_future_work_ideas
 
 SAMPLE_CONFIG = {
     "llm": {
@@ -275,3 +276,113 @@ def test_live_synthesis_and_future_work_roundtrip():
     future_work = generate_future_work_ideas(papers, synthesis, client)
     assert future_work is not None
     assert len(future_work) > 0
+
+LONG_INFERRED_TEXT = (
+    "[Inferred, not author-stated] Multilingual evaluation — [1]'s method is only evaluated on "
+    "English-language papers based on its stated problem framing; extending the evaluation to "
+    "other languages is a natural next step given this constraint, though the paper does not "
+    "state this itself."
+)
+
+
+def _summary_only_paper(title: str) -> Paper:
+    """A paper with a Phase 5 summary but NO extracted Limitations/
+    Future Work text — the Tier 2 eligibility case."""
+    return _summarized_paper(title, with_sections=False)
+
+
+def _no_summary_paper(title: str) -> Paper:
+    return Paper(
+        title=title,
+        authors=["A. Researcher"],
+        abstract="Some abstract.",
+        source=SourceName.ARXIV,
+    )
+
+
+# ── generate_inferred_future_work_ideas (Tier 2) ─────────────────────
+
+
+def test_generate_inferred_future_work_ideas_returns_text_on_success():
+    papers = [_summary_only_paper("Paper A")]
+    client = _StubClient(LONG_INFERRED_TEXT)
+
+    result = generate_inferred_future_work_ideas(papers, LONG_SYNTHESIS_TEXT, client)
+
+    assert result == LONG_INFERRED_TEXT
+    prompt, system = client.calls[0]
+    assert "Paper A" in prompt
+    assert "inferred" in system.lower()
+
+
+def test_generate_inferred_future_work_ideas_skips_papers_that_already_have_grounding_text():
+    """A paper with real Limitations/Future Work text should go through
+    Tier 1 only — it must not also appear in the Tier 2 prompt."""
+    grounded = _summarized_paper("Grounded Paper", with_sections=True)
+    ungrounded = _summary_only_paper("Ungrounded Paper")
+    client = _StubClient(LONG_INFERRED_TEXT)
+
+    generate_inferred_future_work_ideas([grounded, ungrounded], LONG_SYNTHESIS_TEXT, client)
+
+    prompt, _ = client.calls[0]
+    assert "Grounded Paper" not in prompt
+    assert "Ungrounded Paper" in prompt
+
+
+def test_generate_inferred_future_work_ideas_returns_none_when_no_eligible_papers():
+    """If every paper either already has grounding text or has no
+    summary at all, there's nothing for Tier 2 to work with."""
+    grounded = _summarized_paper("Grounded Paper", with_sections=True)
+    no_summary = _no_summary_paper("No Summary Paper")
+    client = _StubClient(LONG_INFERRED_TEXT)
+
+    result = generate_inferred_future_work_ideas([grounded, no_summary], LONG_SYNTHESIS_TEXT, client)
+
+    assert result is None
+    assert len(client.calls) == 0
+
+
+def test_generate_inferred_future_work_ideas_returns_none_on_empty_synthesis():
+    papers = [_summary_only_paper("Paper A")]
+    client = _StubClient(LONG_INFERRED_TEXT)
+
+    result = generate_inferred_future_work_ideas(papers, "", client)
+
+    assert result is None
+    assert len(client.calls) == 0
+
+
+def test_generate_inferred_future_work_ideas_returns_none_when_client_fails():
+    papers = [_summary_only_paper("Paper A")]
+    client = _StubClient(None)
+
+    result = generate_inferred_future_work_ideas(papers, LONG_SYNTHESIS_TEXT, client)
+
+    assert result is None
+
+
+def test_generate_inferred_future_work_ideas_returns_none_on_too_short_response():
+    papers = [_summary_only_paper("Paper A")]
+    client = _StubClient("Too short.")
+
+    result = generate_inferred_future_work_ideas(papers, LONG_SYNTHESIS_TEXT, client)
+
+    assert result is None
+
+
+def test_tier1_and_tier2_are_independent_and_never_conflated():
+    """A mixed batch should produce distinct Tier 1 and Tier 2 outputs
+    from two separate calls — this is a design invariant, not just a
+    behavior check."""
+    grounded = _summarized_paper("Grounded Paper", with_sections=True)
+    summary_only = _summary_only_paper("Summary Only Paper")
+
+    tier1_client = _StubClient(LONG_FUTURE_WORK_TEXT)
+    tier2_client = _StubClient(LONG_INFERRED_TEXT)
+
+    tier1_result = generate_future_work_ideas([grounded, summary_only], LONG_SYNTHESIS_TEXT, tier1_client)
+    tier2_result = generate_inferred_future_work_ideas([grounded, summary_only], LONG_SYNTHESIS_TEXT, tier2_client)
+
+    assert tier1_result == LONG_FUTURE_WORK_TEXT
+    assert tier2_result == LONG_INFERRED_TEXT
+    assert tier1_result != tier2_result

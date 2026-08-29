@@ -54,9 +54,9 @@ def index(request: Request):
         report_html = _render_markdown(get_run_report_markdown(_output_dir(), selected.run_id))
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "runs": runs,
             "selected_run_id": selected.run_id if selected else None,
             "report_html": report_html,

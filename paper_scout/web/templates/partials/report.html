@@ -1,0 +1,60 @@
+{% if not run %}
+  <div class="report-header">
+    <div class="eyebrow">paper-scout</div>
+    <h1 class="report-title">No runs yet</h1>
+    <p class="body-text">Start a new search from the sidebar to generate your first report.</p>
+  </div>
+{% else %}
+
+  <div class="report-header">
+    <div class="eyebrow">Research Report</div>
+    <h1 class="report-title">{{ run.query }}</h1>
+    <div class="report-sub">
+      <span>Generated {{ run.run_timestamp[:16].replace("T", " ") if run.run_timestamp else "unknown" }} UTC</span>
+      <span>{{ run.paper_count }} papers</span>
+      {% if run.sources %}
+        <span>
+          Sources:
+          {% for name, info in run.sources.items() %}{{ name }} ({{ info.papers_found }}){{ ", " if not loop.last }}{% endfor %}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if run.extraction_summary %}
+  <div class="stats-strip">
+    <div class="stat-cell">
+      <div class="stat-label">Abstract found</div>
+      <div class="stat-value">{{ run.extraction_summary.get("abstract_found", 0) }}<span class="stat-of"> / {{ run.paper_count }}</span></div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Conclusion found</div>
+      <div class="stat-value">{{ run.extraction_summary.get("conclusion_found", 0) }}<span class="stat-of"> / {{ run.paper_count }}</span></div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Limitations found</div>
+      <div class="stat-value">{{ run.extraction_summary.get("limitations_found", 0) }}<span class="stat-of"> / {{ run.paper_count }}</span></div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Future work found</div>
+      {% set fw = run.extraction_summary.get("future_work_found", 0) %}
+      <div class="stat-value {% if fw == 0 %}stat-warn{% endif %}">{{ fw }}<span class="stat-of"> / {{ run.paper_count }}</span></div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if run.has_pdf %}
+    <p style="margin-bottom: 32px;">
+      <a href="/runs/{{ run.run_id }}/report.pdf" class="btn" style="display:inline-block; text-decoration:none;" download>Download PDF ↓</a>
+    </p>
+  {% endif %}
+
+  {% if report_html %}
+    <div class="rendered-report">
+      {{ report_html | safe }}
+    </div>
+  {% else %}
+    <p class="body-text">No report content found for this run.</p>
+  {% endif %}
+
+{% endif %}

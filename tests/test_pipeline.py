@@ -75,21 +75,23 @@ def _sample_paper(title: str = "Sample Paper", pdf_url: str | None = "https://ar
 # ── ingest_paper / ingest_papers (deferred Phase 3 glue) ────────────
 
 
-def test_ingest_paper_falls_back_to_abstract_when_no_pdf_url(monkeypatch):
+def test_ingest_paper_falls_back_to_abstract_when_no_pdf_url(monkeypatch, tmp_path):
     paper = _sample_paper(pdf_url=None)
+    ingestion_cfg = {**SAMPLE_CONFIG["ingestion"], "pdf_cache_dir": str(tmp_path)}
 
-    ingest_paper(paper, SAMPLE_CONFIG["ingestion"])
+    ingest_paper(paper, ingestion_cfg)
 
     assert paper.full_text_available is False
     assert paper.extracted_sections is not None
     assert paper.extracted_sections.abstract == "Sample abstract text."
 
 
-def test_ingest_paper_falls_back_when_pdf_download_fails(monkeypatch):
+def test_ingest_paper_falls_back_when_pdf_download_fails(monkeypatch, tmp_path):
     monkeypatch.setattr("paper_scout.ingestion.ingest.fetch_pdf", lambda *a, **k: None)
     paper = _sample_paper()
+    ingestion_cfg = {**SAMPLE_CONFIG["ingestion"], "pdf_cache_dir": str(tmp_path)}
 
-    ingest_paper(paper, SAMPLE_CONFIG["ingestion"])
+    ingest_paper(paper, ingestion_cfg)
 
     assert paper.full_text_available is False
     assert paper.extracted_sections.abstract == "Sample abstract text."
@@ -106,7 +108,8 @@ def test_ingest_paper_populates_sections_on_successful_download(monkeypatch, tmp
     )
 
     paper = _sample_paper()
-    ingest_paper(paper, SAMPLE_CONFIG["ingestion"])
+    ingestion_cfg = {**SAMPLE_CONFIG["ingestion"], "pdf_cache_dir": str(tmp_path)}
+    ingest_paper(paper, ingestion_cfg)
 
     assert paper.full_text_available is True
     assert paper.extracted_sections.limitations == "Some limitation."
@@ -132,11 +135,12 @@ def test_ingest_papers_one_failure_does_not_block_others(monkeypatch):
         ingest_papers(papers, SAMPLE_CONFIG["ingestion"])
 
 
-def test_ingest_papers_processes_all_papers_when_fetch_always_degrades(monkeypatch):
+def test_ingest_papers_processes_all_papers_when_fetch_always_degrades(monkeypatch, tmp_path):
     monkeypatch.setattr("paper_scout.ingestion.ingest.fetch_pdf", lambda *a, **k: None)
     papers = [_sample_paper("A"), _sample_paper("B"), _sample_paper("C")]
+    ingestion_cfg = {**SAMPLE_CONFIG["ingestion"], "pdf_cache_dir": str(tmp_path)}
 
-    result = ingest_papers(papers, SAMPLE_CONFIG["ingestion"])
+    result = ingest_papers(papers, ingestion_cfg)
 
     assert result is papers
     assert all(p.extracted_sections is not None for p in papers)

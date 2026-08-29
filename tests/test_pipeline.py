@@ -398,23 +398,42 @@ def test_run_pipeline_survives_both_future_work_tiers_none(monkeypatch, tmp_path
 def test_run_pipeline_creates_per_query_run_folder_with_report_and_pdfs(monkeypatch, tmp_path, mock_client):
     config = _patch_all_stages(monkeypatch, tmp_path)
 
-    pdf_cache_dir = tmp_path / "pdf_cache"
-    pdf_cache_dir.mkdir()
-    config["ingestion"]["pdf_cache_dir"] = str(pdf_cache_dir)
-
-    monkeypatch.setattr(
-        "paper_scout.pipeline.copy_cached_pdfs",
-        lambda papers, cache_dir, dest_dir: {"fake_key": None},
-    )
-
     result = run_pipeline("test query", config, client=mock_client)
 
     from pathlib import Path
 
     report_path = Path(result.report_path)
+    run_dir = report_path.parent
+
     assert report_path.name == "report.md"
-    assert report_path.parent.name == "test-query_2026-08-29"
-    assert report_path.parent.parent == Path(tmp_path)
+    assert run_dir.name.startswith("test-query_")
+    assert run_dir.parent == Path(tmp_path)
+    assert (run_dir / "report.pdf").exists()
+    assert (run_dir / "pdfs").is_dir()
+
+
+def test_run_pipeline_ingest_receives_run_specific_pdf_cache_dir(monkeypatch, tmp_path, mock_client):
+    """node_ingest must point ingestion at <run_dir>/pdfs, not a shared
+    cross-run cache — this is the core of the no-shared-cache change."""
+    config = _patch_all_stages(monkeypatch, tmp_path)
+
+    captured_cfg = {}
+
+    def fake_ingest(papers, ingestion_cfg):
+        captured_cfg.update(ingestion_cfg)
+        for p in papers:
+            p.extracted_sections = ExtractedSections(limitations="A limitation.")
+            p.full_text_available = True
+        return papers
+
+    monkeypatch.setattr("paper_scout.pipeline.ingest_papers", fake_ingest)
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    from pathlib import Path
+
+    run_dir = Path(result.report_path).parent
+    assert captured_cfg["pdf_cache_dir"] == str(run_dir / "pdfs")
 
 def test_build_pipeline_graph_compiles_without_error():
     app = build_pipeline_graph()

@@ -13,6 +13,16 @@ from datetime import date, datetime
 from paper_scout.report.report_writer import render_report, slugify, write_report
 from paper_scout.utils.models import ExtractedSections, Paper, PaperSummary, PipelineRun, SourceName
 
+from paper_scout.report.report_writer import (
+    build_run_dir_name,
+    build_run_dir_name_for,
+    markdown_to_pdf,
+    render_report,
+    slugify,
+    write_report,
+    write_report_pdf,
+)
+
 SAMPLE_CONFIG = {
     "report": {
         "output_dir": "outputs",
@@ -297,3 +307,43 @@ def test_render_report_does_not_mark_papers_with_grounding_text():
     report = render_report(run, SAMPLE_CONFIG)
 
     assert "This paper had no extractable Limitations/Future Work section" not in report
+
+# ── build_run_dir_name_for / write_report_pdf ────────────────────────
+
+
+def test_build_run_dir_name_for_matches_query_and_timestamp():
+    assert build_run_dir_name_for(
+        "grounded future-work ideation", datetime(2024, 6, 1, 12, 0, 0)
+    ) == "grounded-future-work-ideation_2024-06-01"
+
+
+def test_write_report_pdf_creates_file(tmp_path):
+    run = _sample_pipeline_run()
+
+    path = write_report_pdf(run, SAMPLE_CONFIG, output_dir=tmp_path)
+
+    assert path == tmp_path / "report.pdf"
+    assert path.exists()
+    assert path.stat().st_size > 0
+
+
+def test_write_report_pdf_accepts_explicit_filename(tmp_path):
+    run = _sample_pipeline_run()
+
+    path = write_report_pdf(run, SAMPLE_CONFIG, output_dir=tmp_path, filename="custom.pdf")
+
+    assert path == tmp_path / "custom.pdf"
+    assert path.exists()
+
+
+def test_markdown_to_pdf_does_not_raise_on_typical_report_content(tmp_path):
+    """Smoke test — renders a full markdown report (headings, bold,
+    links, blank lines) through the PDF exporter without error."""
+    run = _sample_pipeline_run([_paper_with_summary()])
+    content = render_report(run, SAMPLE_CONFIG)
+    dest = tmp_path / "smoke.pdf"
+
+    markdown_to_pdf(content, dest)
+
+    assert dest.exists()
+    assert dest.stat().st_size > 0

@@ -35,6 +35,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, TypedDict
 
+import json
+from paper_scout.sources.runner import fetch_all_sources_with_stats
+
 from langgraph.graph import END, START, StateGraph
 
 from paper_scout.ingestion.ingest import ingest_papers
@@ -89,9 +92,9 @@ def node_setup_run(state: PipelineState) -> dict:
 
 def node_fetch_sources(state: PipelineState) -> dict:
     logger.info("Fetching papers for query: %r", state["query"])
-    raw_papers = fetch_all_sources(state["query"], state["config"])
+    raw_papers, source_stats = fetch_all_sources_with_stats(state["query"], state["config"])
     logger.info("Fetched %d raw papers across all sources", len(raw_papers))
-    return {"raw_papers": raw_papers}
+    return {"raw_papers": raw_papers, "source_stats": source_stats}
 
 
 def node_dedupe_and_rank(state: PipelineState) -> dict:

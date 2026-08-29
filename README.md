@@ -21,7 +21,7 @@ Give it a query like `"diffusion models for audio"` and it will:
 6. Generate future work directions in two tiers:
    - **Grounded** directions, traceable to what the papers themselves state in their Limitations/Future Work sections
    - **Inferred** directions, for papers with no extractable Limitations/Future Work section, reasoned from the paper's problem, method, and key result instead. These are always explicitly tagged `[Inferred, not author-stated]` so they are never mistaken for grounded ones
-7. Write everything to a self contained per run output folder: a markdown report, a PDF version of the same report, and the downloaded PDFs for every paper in the run
+7. Write everything to a self contained per run output folder: a markdown report, a PDF version of the same report, the metadata of the run, and the downloaded PDFs for every paper in the run
 
 You run one command and get one folder. No intermediate prompts, no manual steps in between.
 

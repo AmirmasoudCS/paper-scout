@@ -20,8 +20,6 @@ from typing import Optional
 
 import requests
 
-import shutil
-
 from paper_scout.utils.models import Paper
 
 logger = logging.getLogger(__name__)

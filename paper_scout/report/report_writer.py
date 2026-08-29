@@ -79,6 +79,15 @@ def _source_label(paper: Paper) -> str:
     }
     return labels.get(str(paper.source), str(paper.source))
 
+def _has_no_grounding_text(paper: Paper) -> bool:
+    """True if this paper has neither extracted Limitations nor Future
+    Work text — i.e. any future-work ideas touching it in the report
+    can only have come from Tier 2 inference, never Tier 1 grounding.
+    Mirrors synthesize.future_work._has_grounding_text()."""
+    sections = paper.extracted_sections
+    if sections is None:
+        return True
+    return not sections.limitations and not sections.future_work
 
 def _render_paper_section(index: int, paper: Paper) -> str:
     lines = [f"### {_paper_heading(index, paper)}", ""]
@@ -99,6 +108,13 @@ def _render_paper_section(index: int, paper: Paper) -> str:
         lines.append("")
         if paper.summary.stated_limitations:
             lines.append(f"**Stated limitations:** {paper.summary.stated_limitations}")
+            lines.append("")
+        if _has_no_grounding_text(paper):
+            lines.append(
+                "*This paper had no extractable Limitations/Future Work section — any "
+                "future-work ideas involving it are inferred, not author-stated. See "
+                "\"Future Work Ideas (Inferred)\" above.*"
+            )
             lines.append("")
     else:
         logger.info("No summary available for %r — falling back to abstract", paper.title)

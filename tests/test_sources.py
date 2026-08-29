@@ -1,11 +1,13 @@
 # tests/test_sources.py
+from unittest.mock import MagicMock
+
 import pytest
 
 from paper_scout.sources.arxiv_source import ArxivSource
 from paper_scout.sources.semantic_scholar_source import SemanticScholarSource
 from paper_scout.sources.huggingface_papers_source import HuggingFacePapersSource
-from paper_scout.utils.models import Paper
-from paper_scout.sources.runner import fetch_all_sources_with_stats
+from paper_scout.sources.runner import fetch_all_sources, fetch_all_sources_with_stats
+from paper_scout.utils.models import Paper, SourceName
 
 
 TEST_QUERY = "diffusion models for audio generation"
@@ -26,7 +28,6 @@ def test_arxiv_source_returns_relevant_papers():
     source = ArxivSource()
     papers = source.search(TEST_QUERY, max_results=MAX_RESULTS)
     _assert_valid_papers(papers)
-    # sanity check relevance: at least one result should mention a query keyword
     combined_text = " ".join(p.title.lower() + p.abstract.lower() for p in papers)
     assert "diffusion" in combined_text or "audio" in combined_text
 
@@ -58,14 +59,27 @@ def test_all_sources_degrade_gracefully_on_bad_query():
         papers = source.search(nonsense_query, max_results=5)
         assert isinstance(papers, list)  # should never raise, even with 0 results
 
+
+# ── fetch_all_sources_with_stats (mocked, no network) ────────────────
+
+
+def _mock_paper(title: str) -> Paper:
+    return Paper(
+        title=title,
+        authors=["A. Researcher"],
+        abstract="Sample abstract.",
+        source=SourceName.ARXIV,
+    )
+
+
 def test_fetch_all_sources_with_stats_reports_counts_per_source(monkeypatch):
     fetcher_a = MagicMock()
     fetcher_a.name = "arxiv"
-    fetcher_a.search.return_value = [_sample_paper("From A"), _sample_paper("From A2")]
+    fetcher_a.search.return_value = [_mock_paper("From A"), _mock_paper("From A2")]
 
     fetcher_b = MagicMock()
     fetcher_b.name = "huggingface_papers"
-    fetcher_b.search.return_value = [_sample_paper("From B")]
+    fetcher_b.search.return_value = [_mock_paper("From B")]
 
     monkeypatch.setattr(
         "paper_scout.sources.runner.build_source_fetchers", lambda config: [fetcher_a, fetcher_b]
@@ -129,9 +143,18 @@ def test_fetch_all_sources_with_stats_backfills_disabled_sources(monkeypatch):
     assert stats["huggingface_papers"] == {"enabled": False, "papers_found": 0}
 
 
-def test_fetch_all_sources_still_returns_just_papers():
+def test_fetch_all_sources_still_returns_just_papers(monkeypatch):
     """Existing callers of fetch_all_sources() must be unaffected by the stats addition."""
-    from paper_scout.sources.runner import fetch_all_sources
+    fetcher = MagicMock()
+    fetcher.name = "arxiv"
+    fetcher.search.return_value = [_mock_paper("Some Paper")]
 
-    result = fetch_all_sources("diffusion models", SAMPLE_CONFIG)
+    monkeypatch.setattr("paper_scout.sources.runner.build_source_fetchers", lambda config: [fetcher])
+    config = {
+        "search": {"max_papers_per_source": 10},
+        "sources": {"arxiv": {"enabled": True}, "semantic_scholar": {"enabled": False}, "huggingface_papers": {"enabled": False}},
+    }
+
+    result = fetch_all_sources("diffusion models", config)
     assert isinstance(result, list)
+    assert len(result) == 1

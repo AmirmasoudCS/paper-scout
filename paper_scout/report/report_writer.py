@@ -114,6 +114,7 @@ def _render_toc(papers: list[Paper]) -> str:
     lines = ["## Table of Contents", ""]
     lines.append("- [Cross-Paper Synthesis](#cross-paper-synthesis)")
     lines.append("- [Future Work Ideas](#future-work-ideas)")
+    lines.append("- [Future Work Ideas (Inferred)](#future-work-ideas-inferred)")
     lines.append("- [Papers](#papers)")
     for i, paper in enumerate(papers, start=1):
         heading = _paper_heading(i, paper)

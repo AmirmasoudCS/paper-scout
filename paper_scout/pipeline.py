@@ -160,6 +160,7 @@ def build_pipeline_graph():
     graph.add_node("summarize", node_summarize)
     graph.add_node("cross_paper_synthesis", node_cross_paper_synthesis)
     graph.add_node("future_work", node_future_work)
+    graph.add_node("inferred_future_work", node_inferred_future_work)
     graph.add_node("write_report", node_write_report)
 
     graph.add_edge(START, "fetch_sources")

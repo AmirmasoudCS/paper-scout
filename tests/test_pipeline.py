@@ -339,11 +339,16 @@ def test_run_pipeline_survives_none_synthesis_and_future_work(monkeypatch, tmp_p
         "paper_scout.pipeline.generate_future_work_ideas",
         lambda papers, synthesis, client: None,
     )
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_inferred_future_work_ideas",
+        lambda papers, synthesis, client: None,
+    )
 
     result = run_pipeline("test query", config, client=mock_client)
 
     assert result.cross_paper_synthesis is None
     assert result.future_work_ideas is None
+    assert result.future_work_ideas_inferred is None
     assert result.report_path is not None
 
 def test_run_pipeline_survives_none_inferred_future_work(monkeypatch, tmp_path, mock_client):

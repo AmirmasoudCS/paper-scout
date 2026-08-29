@@ -42,6 +42,10 @@ from paper_scout.synthesize.future_work import (
     generate_inferred_future_work_ideas,
 )
 
+from pathlib import Path
+from paper_scout.ingestion.pdf_fetch import copy_cached_pdfs
+from paper_scout.report.report_writer import build_run_dir_name, write_report
+
 logger = logging.getLogger(__name__)
 
 
@@ -144,7 +148,16 @@ def node_write_report(state: PipelineState) -> dict:
         future_work_ideas=state.get("future_work_ideas"),
         future_work_ideas_inferred=state.get("future_work_ideas_inferred"),
     )
-    write_report(run, state["config"])
+
+    report_cfg = state["config"].get("report", {})
+    base_output_dir = Path(report_cfg.get("output_dir", "outputs"))
+    run_dir = base_output_dir / build_run_dir_name(run)
+
+    write_report(run, state["config"], output_dir=run_dir, filename="report.md")
+
+    pdf_cache_dir = state["config"]["ingestion"]["pdf_cache_dir"]
+    copy_cached_pdfs(state["papers"], cache_dir=pdf_cache_dir, dest_dir=run_dir / "pdfs")
+
     return {"pipeline_run": run}
 
 

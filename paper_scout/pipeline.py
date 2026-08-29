@@ -37,6 +37,10 @@ from paper_scout.summarize.summarizer import summarize_papers
 from paper_scout.synthesize.cross_paper import synthesize_cross_paper
 from paper_scout.synthesize.future_work import generate_future_work_ideas
 from paper_scout.utils.models import Paper, PipelineRun
+from paper_scout.synthesize.future_work import (
+    generate_future_work_ideas,
+    generate_inferred_future_work_ideas,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +53,7 @@ class PipelineState(TypedDict, total=False):
     papers: list[Paper]
     cross_paper_synthesis: Optional[str]
     future_work_ideas: Optional[str]
+    future_work_ideas_inferred: Optional[str]
     pipeline_run: PipelineRun
 
 
@@ -117,6 +122,18 @@ def node_future_work(state: PipelineState) -> dict:
         state["papers"], state.get("cross_paper_synthesis") or "", state["client"]
     )
     return {"future_work_ideas": future_work}
+
+
+def node_inferred_future_work(state: PipelineState) -> dict:
+    """Tier 2 — runs after Tier 1, over the same papers/synthesis. Only
+    papers with no extracted Limitations/Future Work text (and a Phase 5
+    summary) are eligible; see synthesize/future_work.py for the split.
+    Kept as a fully separate node/state field so its output can never
+    accidentally merge with Tier 1's grounded ideas in the report."""
+    inferred = generate_inferred_future_work_ideas(
+        state["papers"], state.get("cross_paper_synthesis") or "", state["client"]
+    )
+    return {"future_work_ideas_inferred": inferred}
 
 
 def node_write_report(state: PipelineState) -> dict:

@@ -34,15 +34,20 @@ def slugify(text: str) -> str:
     slug = _SLUG_STRIP_RE.sub("-", text.lower()).strip("-")
     return slug or "untitled"
 
+def build_run_dir_name_for(query: str, timestamp) -> str:
+    """Folder name for a run's self-contained output directory, computed
+    directly from the query and a timestamp — used by the pipeline to
+    create the run directory before a full PipelineRun object exists
+    (PDFs need to download straight into it during ingestion, which
+    happens before the report/PipelineRun are assembled)."""
+    query_slug = slugify(query)
+    run_date = timestamp.date() if hasattr(timestamp, "date") else date_type.today()
+    return f"{query_slug}_{run_date.isoformat()}"
+
+
 def build_run_dir_name(pipeline_run: PipelineRun) -> str:
     """Folder name for one pipeline run's self-contained output directory."""
-    query_slug = slugify(pipeline_run.query)
-    run_date = (
-        pipeline_run.run_timestamp.date()
-        if hasattr(pipeline_run.run_timestamp, "date")
-        else date_type.today()
-    )
-    return f"{query_slug}_{run_date.isoformat()}"
+    return build_run_dir_name_for(pipeline_run.query, pipeline_run.run_timestamp)
 
 def _anchor(text: str) -> str:
     """

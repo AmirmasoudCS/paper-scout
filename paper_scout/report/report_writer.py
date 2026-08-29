@@ -151,26 +151,21 @@ def render_report(pipeline_run: PipelineRun, config: dict) -> str:
         lines.append("*Cross-paper synthesis not available for this run.*")
     lines.append("")
 
-    lines.append("## Future Work Ideas")
+    lines.append("## Future Work Ideas (Inferred)")
     lines.append("")
-    if pipeline_run.future_work_ideas:
-        lines.append(pipeline_run.future_work_ideas.strip())
+    lines.append(
+        "*The directions below are inferred by the model from each paper's problem/method/"
+        "key-result summary, for papers that had no extractable Limitations/Future Work "
+        "section. Unlike the section above, these are not statements the authors themselves "
+        "made — treat them as speculative.*"
+    )
+    lines.append("")
+    if pipeline_run.future_work_ideas_inferred:
+        lines.append(pipeline_run.future_work_ideas_inferred.strip())
     else:
-        lines.append(
-            "*No grounded future-work ideas were generated for this run — this can happen "
-            "if no paper had extractable Limitations/Future Work sections.*"
-        )
+        lines.append("*No inferred future-work ideas were generated for this run.*")
     lines.append("")
 
-    if pipeline_run.future_work_ideas_inferred:
-        lines.append("## Future Work Ideas (Inferred)")
-        lines.append("")
-        lines.append(
-            "*The directions below are inferred by the model from each paper's problem/method/"
-            "key-result summary, for papers that had no extractable Limitations/Future Work "
-            "section. Unlike the section above, these are not statements the authors themselves "
-            "made — treat them as speculative.*"
-        )
     lines.append("")
     lines.append(pipeline_run.future_work_ideas_inferred.strip())
     lines.append("")

@@ -169,7 +169,8 @@ def build_pipeline_graph():
     graph.add_edge("ingest", "summarize")
     graph.add_edge("summarize", "cross_paper_synthesis")
     graph.add_edge("cross_paper_synthesis", "future_work")
-    graph.add_edge("future_work", "write_report")
+    graph.add_edge("future_work", "inferred_future_work")
+    graph.add_edge("inferred_future_work", "write_report")
     graph.add_edge("write_report", END)
 
     return graph.compile()

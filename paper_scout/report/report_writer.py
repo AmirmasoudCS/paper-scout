@@ -151,6 +151,17 @@ def render_report(pipeline_run: PipelineRun, config: dict) -> str:
         lines.append("*Cross-paper synthesis not available for this run.*")
     lines.append("")
 
+    lines.append("## Future Work Ideas")
+    lines.append("")
+    if pipeline_run.future_work_ideas:
+        lines.append(pipeline_run.future_work_ideas.strip())
+    else:
+        lines.append(
+            "*No grounded future-work ideas were generated for this run — this can happen "
+            "if no paper had extractable Limitations/Future Work sections.*"
+        )
+    lines.append("")
+
     lines.append("## Future Work Ideas (Inferred)")
     lines.append("")
     lines.append(
@@ -164,10 +175,6 @@ def render_report(pipeline_run: PipelineRun, config: dict) -> str:
         lines.append(pipeline_run.future_work_ideas_inferred.strip())
     else:
         lines.append("*No inferred future-work ideas were generated for this run.*")
-    lines.append("")
-
-    lines.append("")
-    lines.append(pipeline_run.future_work_ideas_inferred.strip())
     lines.append("")
 
     lines.append("## Papers")

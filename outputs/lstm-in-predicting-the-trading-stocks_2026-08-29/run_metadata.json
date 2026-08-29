@@ -1,0 +1,33 @@
+{
+  "query": "LSTM in predicting the trading stocks",
+  "run_timestamp": "2026-08-29T14:58:07.421635Z",
+  "paper_count": 10,
+  "sources": {
+    "arxiv": {
+      "enabled": true,
+      "papers_found": 10
+    },
+    "semantic_scholar": {
+      "enabled": true,
+      "papers_found": 0
+    },
+    "huggingface_papers": {
+      "enabled": true,
+      "papers_found": 10
+    }
+  },
+  "extraction_summary": {
+    "abstract_found": 10,
+    "conclusion_found": 9,
+    "limitations_found": 1,
+    "future_work_found": 0
+  },
+  "future_work_ideation": {
+    "grounded_generated": true,
+    "inferred_generated": true
+  },
+  "models": {
+    "small": "qwen3.5:9b",
+    "large": "gemma4:e4b"
+  }
+}

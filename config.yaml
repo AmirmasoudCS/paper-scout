@@ -28,7 +28,7 @@ ranking:
 
 # ── Ingestion ──────────────────────────────────────────
 ingestion:
-  pdf_cache_dir: "outputs/pdf_cache"
+  #pdf_cache_dir: "outputs/pdf_cache"
   download_timeout_seconds: 30
   target_sections:               # section headers we try to extract from each paper
     - "abstract"

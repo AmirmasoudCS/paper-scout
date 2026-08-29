@@ -219,7 +219,17 @@ def _patch_all_stages(monkeypatch, tmp_path, papers=None):
     """Patch every pipeline stage to fast, deterministic fakes."""
     papers = papers if papers is not None else [_sample_paper("Fetched Paper")]
 
-    monkeypatch.setattr("paper_scout.pipeline.fetch_all_sources", lambda query, config: list(papers))
+    monkeypatch.setattr(
+        "paper_scout.pipeline.fetch_all_sources_with_stats",
+        lambda query, config: (
+            list(papers),
+            {
+                "arxiv": {"enabled": True, "papers_found": len(papers)},
+                "semantic_scholar": {"enabled": True, "papers_found": 0},
+                "huggingface_papers": {"enabled": True, "papers_found": 0},
+            },
+        ),
+    )
     monkeypatch.setattr(
         "paper_scout.pipeline.dedupe_papers", lambda papers, similarity_threshold: papers
     )

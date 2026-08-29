@@ -346,6 +346,51 @@ def test_run_pipeline_survives_none_synthesis_and_future_work(monkeypatch, tmp_p
     assert result.future_work_ideas is None
     assert result.report_path is not None
 
+def test_run_pipeline_survives_none_inferred_future_work(monkeypatch, tmp_path, mock_client):
+    """Tier 2 returning None (e.g. every paper already had grounding text,
+    or none had summaries) must not break the run or affect Tier 1."""
+    config = _patch_all_stages(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_inferred_future_work_ideas",
+        lambda papers, synthesis, client: None,
+    )
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    assert result.future_work_ideas == "Fake future work ideas."  # Tier 1 unaffected
+    assert result.future_work_ideas_inferred is None
+    assert result.report_path is not None
+
+
+def test_run_pipeline_tier1_and_tier2_both_run_independently(monkeypatch, tmp_path, mock_client):
+    """Sanity check on the graph wiring itself: both future-work nodes
+    run and land in distinct PipelineRun fields, never merged."""
+    config = _patch_all_stages(monkeypatch, tmp_path)
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    assert result.future_work_ideas == "Fake future work ideas."
+    assert result.future_work_ideas_inferred == "Fake inferred future work ideas."
+    assert result.future_work_ideas != result.future_work_ideas_inferred
+
+
+def test_run_pipeline_survives_both_future_work_tiers_none(monkeypatch, tmp_path, mock_client):
+    config = _patch_all_stages(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_future_work_ideas",
+        lambda papers, synthesis, client: None,
+    )
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_inferred_future_work_ideas",
+        lambda papers, synthesis, client: None,
+    )
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    assert result.future_work_ideas is None
+    assert result.future_work_ideas_inferred is None
+    assert result.report_path is not None
+
 
 def test_build_pipeline_graph_compiles_without_error():
     app = build_pipeline_graph()

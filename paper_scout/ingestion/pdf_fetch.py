@@ -160,6 +160,13 @@ def copy_cached_pdfs(
     for paper in papers:
         src = _cache_path(paper, cache_dir)
         if not src.exists():
+            if paper.pdf_url is not None:
+                logger.warning(
+                    "No cached PDF found for %r (expected %s) — it had a pdf_url but "
+                    "ingestion apparently didn't cache it; skipping copy",
+                    paper.title,
+                    src,
+                )
             results[paper.dedupe_key()] = None
             continue
         dest = dest_dir / src.name

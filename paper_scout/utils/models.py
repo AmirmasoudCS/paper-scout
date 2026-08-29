@@ -67,4 +67,5 @@ class PipelineRun(BaseModel):
     papers: list[Paper] = Field(default_factory=list)
     cross_paper_synthesis: Optional[str] = None
     future_work_ideas: Optional[str] = None
+    future_work_ideas_inferred: Optional[str] = None  # Tier 2, see synthesize/future_work.py
     report_path: Optional[str] = None

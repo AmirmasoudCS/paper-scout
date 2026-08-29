@@ -396,6 +396,26 @@ def test_run_pipeline_survives_both_future_work_tiers_none(monkeypatch, tmp_path
     assert result.future_work_ideas_inferred is None
     assert result.report_path is not None
 
+def test_run_pipeline_creates_per_query_run_folder_with_report_and_pdfs(monkeypatch, tmp_path, mock_client):
+    config = _patch_all_stages(monkeypatch, tmp_path)
+
+    pdf_cache_dir = tmp_path / "pdf_cache"
+    pdf_cache_dir.mkdir()
+    config["ingestion"]["pdf_cache_dir"] = str(pdf_cache_dir)
+
+    monkeypatch.setattr(
+        "paper_scout.pipeline.copy_cached_pdfs",
+        lambda papers, cache_dir, dest_dir: {"fake_key": None},
+    )
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    from pathlib import Path
+
+    report_path = Path(result.report_path)
+    assert report_path.name == "report.md"
+    assert report_path.parent.name == "test-query_2026-08-29"
+    assert report_path.parent.parent == Path(tmp_path)
 
 def test_build_pipeline_graph_compiles_without_error():
     app = build_pipeline_graph()

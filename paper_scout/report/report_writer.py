@@ -21,6 +21,11 @@ from datetime import date as date_type
 from pathlib import Path
 from typing import Optional
 
+import re
+
+import pymupdf
+
+
 from paper_scout.utils.models import Paper, PipelineRun
 
 logger = logging.getLogger(__name__)
@@ -246,3 +251,106 @@ def write_report(
     pipeline_run.report_path = str(report_path)
     logger.info("Wrote report for query %r -> %s", pipeline_run.query, report_path)
     return report_path
+
+
+_PDF_PAGE_WIDTH = 595   # A4 in points
+_PDF_PAGE_HEIGHT = 842
+_PDF_MARGIN = 50
+_PDF_BODY_FONT_SIZE = 10
+_PDF_H1_FONT_SIZE = 18
+_PDF_H2_FONT_SIZE = 15
+_PDF_H3_FONT_SIZE = 12
+_PDF_MD_BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
+_PDF_MD_LINK_RE = re.compile(r"\[(.*?)\]\(.*?\)")
+
+
+def _pdf_wrap_line(text: str, font: str, fontsize: float, max_width: float) -> list[str]:
+    """Greedy word-wrap using PyMuPDF's own text-measurement, so wrapped
+    lines actually fit the page at the given font/size."""
+    words = text.split(" ")
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        trial = f"{current} {word}".strip()
+        if pymupdf.get_text_length(trial, fontname=font, fontsize=fontsize) <= max_width:
+            current = trial
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def markdown_to_pdf(markdown_text: str, dest_path: str | Path) -> None:
+    """
+    Render markdown text as a plain, paginated PDF — headings get
+    larger bold text, **bold**/[link](url) syntax is stripped to plain
+    text rather than rendered literally. Not full typesetting (no
+    inline bold, no clickable links) — a lightweight, zero-extra-
+    dependency PDF export of the same content as the .md report.
+    """
+    doc = pymupdf.open()
+    page = doc.new_page(width=_PDF_PAGE_WIDTH, height=_PDF_PAGE_HEIGHT)
+    y = _PDF_MARGIN
+    max_width = _PDF_PAGE_WIDTH - 2 * _PDF_MARGIN
+
+    def new_page() -> None:
+        nonlocal page, y
+        page = doc.new_page(width=_PDF_PAGE_WIDTH, height=_PDF_PAGE_HEIGHT)
+        y = _PDF_MARGIN
+
+    for raw_line in markdown_text.split("\n"):
+        line = raw_line.rstrip()
+
+        heading_level = 0
+        if line.startswith("#"):
+            heading_level = len(line) - len(line.lstrip("#"))
+            line = line.lstrip("#").strip()
+
+        line = _PDF_MD_BOLD_RE.sub(r"\1", line)
+        line = _PDF_MD_LINK_RE.sub(r"\1", line)
+
+        if not line:
+            y += _PDF_BODY_FONT_SIZE + 4
+            if y > _PDF_PAGE_HEIGHT - _PDF_MARGIN:
+                new_page()
+            continue
+
+        if heading_level == 1:
+            font, fontsize = "hebo", _PDF_H1_FONT_SIZE
+        elif heading_level == 2:
+            font, fontsize = "hebo", _PDF_H2_FONT_SIZE
+        elif heading_level == 3:
+            font, fontsize = "hebo", _PDF_H3_FONT_SIZE
+        else:
+            font, fontsize = "helv", _PDF_BODY_FONT_SIZE
+
+        for wrapped_line in _pdf_wrap_line(line, font, fontsize, max_width):
+            if y > _PDF_PAGE_HEIGHT - _PDF_MARGIN:
+                new_page()
+            page.insert_text((_PDF_MARGIN, y), wrapped_line, fontsize=fontsize, fontname=font)
+            y += fontsize + 4
+
+    doc.save(str(dest_path))
+    doc.close()
+
+
+def write_report_pdf(
+    pipeline_run: PipelineRun,
+    config: dict,
+    output_dir: str | Path,
+    filename: str = "report.pdf",
+) -> Path:
+    """PDF twin of write_report() — same rendered content, same output
+    directory, so a run's .md and .pdf always show identical content."""
+    target_dir = Path(output_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    content = render_report(pipeline_run, config)
+    pdf_path = target_dir / filename
+    markdown_to_pdf(content, pdf_path)
+
+    logger.info("Wrote PDF report for query %r -> %s", pipeline_run.query, pdf_path)
+    return pdf_path

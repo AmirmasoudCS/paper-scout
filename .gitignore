@@ -226,3 +226,6 @@ outputs/pdf_cache
 
 # PDFs
 *.pdf
+
+# Debug
+tmp_debug_run

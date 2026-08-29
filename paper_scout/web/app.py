@@ -42,7 +42,7 @@ def _output_dir() -> Path:
 def _render_markdown(markdown_text: Optional[str]) -> Optional[str]:
     if markdown_text is None:
         return None
-    return md_lib.markdown(markdown_text, extensions=["extra", "sane_lists"])
+    return md_lib.markdown(markdown_text, extensions=["extra", "sane_lists", "toc"])
 
 
 @app.get("/", response_class=HTMLResponse)

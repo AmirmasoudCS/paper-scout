@@ -90,11 +90,31 @@ def stage_progress(job: JobState) -> list[dict]:
     return rows
 
 
-def start_job(query: str, config: dict) -> str:
-    job_id = uuid.uuid4().hex[:12]
-    job = JobState(job_id=job_id, query=query)
+_active_job_id: Optional[str] = None
+
+
+def is_run_in_progress() -> bool:
     with _lock:
+        return _active_job_id is not None
+
+
+def start_job(query: str, config: dict) -> Optional[str]:
+    """
+    Starts a new background pipeline run. Returns the new job_id, or
+    None if a run is already in progress — only one run is allowed at
+    a time, since a second concurrent run would hit the same local
+    Ollama server simultaneously and slow both down (or worse, on
+    memory-constrained setups).
+    """
+    global _active_job_id
+
+    with _lock:
+        if _active_job_id is not None:
+            return None
+        job_id = uuid.uuid4().hex[:12]
+        job = JobState(job_id=job_id, query=query)
         _jobs[job_id] = job
+        _active_job_id = job_id
 
     thread = threading.Thread(target=_run_job, args=(job, query, config), daemon=True)
     thread.start()
@@ -102,6 +122,7 @@ def start_job(query: str, config: dict) -> str:
 
 
 def _run_job(job: JobState, query: str, config: dict) -> None:
+    global _active_job_id
     try:
         client = OllamaClient.from_config(config)
 
@@ -129,7 +150,11 @@ def _run_job(job: JobState, query: str, config: dict) -> None:
         job.run_id = Path(pipeline_run.report_path).parent.name
         job.status = "done"
 
-    except Exception as exc:  # noqa: BLE001 — any failure should surface to the UI, not vanish
+    except Exception as exc:  # noqa: BLE001
         logger.exception("Web-triggered pipeline run failed for query %r", query)
         job.status = "error"
         job.error = str(exc)
+
+    finally:
+        with _lock:
+            _active_job_id = None

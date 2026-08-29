@@ -68,11 +68,21 @@ python -m paper_scout "your research topic here"
 Each run creates its own folder under `outputs/`, named after your query and the date, containing:
 
 ```
-outputs/your-query-slug_2026-08-29/
-├── report.md      # the full report
-├── report.pdf      # the same report, as a PDF
-└── pdfs/            # every paper's downloaded PDF for this run
+📁 outputs
+└── 📁 neural-networks-architecture-and-their-impact-on-accuracy_2026-08-29
+    ├── 📁 pdfs
+    │   ├── 📕 1511.05497v2.pdf
+    │   ├── 📕 1905.05918v1.pdf
+    │   ├── 📕 2006.07556.pdf
+    │   ├── 📕 2009.00804v2.pdf
+    │   ├── 📕 2109.12426.pdf
+    │   ├── 📕 2307.05639v2.pdf
+    │   └── 📕 2510.21866.pdf
+    ├── 📘 report.md
+    ├── 📕 report.pdf
+    └── 🧩 run_metadata.json
 ```
+> Generated using [Tree Printer](https://github.com/AmirmasoudCS/Tree-Printer.git)
 
 There is no shared cross run PDF cache. Every run's PDFs live inside that run's own folder, so a run directory is fully self contained and portable. You can zip it, move it, or delete it without affecting any other run.
 

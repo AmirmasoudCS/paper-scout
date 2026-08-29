@@ -168,6 +168,38 @@ def node_inferred_future_work(state: PipelineState) -> dict:
     return {"future_work_ideas_inferred": inferred}
 
 
+def _build_run_metadata(state: PipelineState, run: PipelineRun) -> dict:
+    papers = state["papers"]
+
+    def _count(field: str) -> int:
+        return sum(
+            1
+            for p in papers
+            if p.extracted_sections is not None and getattr(p.extracted_sections, field)
+        )
+
+    return {
+        "query": state["query"],
+        "run_timestamp": state["run_timestamp"].isoformat() + "Z",
+        "paper_count": len(papers),
+        "sources": state.get("source_stats", {}),
+        "extraction_summary": {
+            "abstract_found": _count("abstract"),
+            "conclusion_found": _count("conclusion"),
+            "limitations_found": _count("limitations"),
+            "future_work_found": _count("future_work"),
+        },
+        "future_work_ideation": {
+            "grounded_generated": run.future_work_ideas is not None,
+            "inferred_generated": run.future_work_ideas_inferred is not None,
+        },
+        "models": {
+            "small": state["config"]["llm"]["small_model"]["name"],
+            "large": state["config"]["llm"]["large_model"]["name"],
+        },
+    }
+
+
 def node_write_report(state: PipelineState) -> dict:
     run = PipelineRun(
         query=state["query"],
@@ -181,6 +213,11 @@ def node_write_report(state: PipelineState) -> dict:
     run_dir = state["run_dir"]
     write_report(run, state["config"], output_dir=run_dir, filename="report.md")
     write_report_pdf(run, state["config"], output_dir=run_dir, filename="report.pdf")
+
+    metadata = _build_run_metadata(state, run)
+    metadata_path = run_dir / "run_metadata.json"
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    logger.info("Wrote run metadata -> %s", metadata_path)
 
     return {"pipeline_run": run}
 

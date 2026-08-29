@@ -226,21 +226,14 @@ def write_report(
     pipeline_run: PipelineRun,
     config: dict,
     output_dir: Optional[str | Path] = None,
+    filename: Optional[str] = None,
 ) -> Path:
-    """
-    Render and write the report to disk, returning the written Path.
-    Also sets pipeline_run.report_path to the same value (as a string),
-    matching the PipelineRun schema's intent.
-
-    `output_dir` overrides config["report"]["output_dir"] when given
-    (mainly for tests) — otherwise falls back to config.
-    """
     report_cfg = config.get("report", {})
     target_dir = Path(output_dir) if output_dir is not None else Path(report_cfg.get("output_dir", "outputs"))
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = _build_filename(pipeline_run, report_cfg)
-    report_path = target_dir / filename
+    report_filename = filename if filename is not None else _build_filename(pipeline_run, report_cfg)
+    report_path = target_dir / report_filename
 
     content = render_report(pipeline_run, config)
     report_path.write_text(content, encoding="utf-8")

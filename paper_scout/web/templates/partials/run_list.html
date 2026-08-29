@@ -1,0 +1,26 @@
+{% if not runs %}
+  <p style="font-family: var(--mono); font-size: 12px; color: var(--ink-faint); padding: 0 10px;">
+    No runs yet. Start a new search to get going.
+  </p>
+{% endif %}
+
+{% for run in runs %}
+  <button
+    class="run-card {% if run.run_id == selected_run_id %}active{% endif %}"
+    hx-get="/runs/{{ run.run_id }}"
+    hx-target="#report-pane"
+    hx-swap="innerHTML"
+    onclick="document.querySelectorAll('.run-card').forEach(c => c.classList.remove('active')); this.classList.add('active');"
+  >
+    <div class="run-query">{{ run.query }}</div>
+    <div class="run-meta">
+      <span>{{ run.run_timestamp[:10] if run.run_timestamp else "—" }}</span>
+      <span class="dot">·</span>
+      <span>{{ run.paper_count }} papers</span>
+      {% set limitations_found = run.extraction_summary.get("limitations_found", 0) %}
+      <span class="run-badge {% if limitations_found > 0 %}ok{% else %}warn{% endif %}">
+        {{ limitations_found }} grounded
+      </span>
+    </div>
+  </button>
+{% endfor %}

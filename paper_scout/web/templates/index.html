@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">Local Research Assistant</div>
+      <div class="brand-title">paper-scout</div>
+    </div>
+
+    <button class="new-run-btn">New search</button>
+
+    <div class="drawer-label">Past runs</div>
+    <div class="run-list" id="run-list">
+      {% include "partials/run_list.html" %}
+    </div>
+  </aside>
+
+  <main class="main" id="report-pane">
+    {% include "partials/report.html" %}
+  </main>
+
+</div>
+
+{% endblock %}

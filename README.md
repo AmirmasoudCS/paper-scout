@@ -39,6 +39,7 @@ You run one command and get one folder. No intermediate prompts, no manual steps
 - [Ollama](https://ollama.com) installed and running locally
 - Two pulled models: a small one for summarization and a larger one for synthesis (configurable, see below)
 - Roughly 32GB RAM recommended for comfortable CPU offload of the larger model
+- [GTK3 runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) (Windows only) for PDF report generation via WeasyPrint. Not needed on macOS/Linux, where the required libraries are typically already present or installable via the system package manager.
 
 ## 🛠️ Setup
 

@@ -74,9 +74,9 @@ def view_run(request: Request, run_id: str):
     report_html = _render_markdown(get_run_report_markdown(_output_dir(), run_id))
 
     return templates.TemplateResponse(
+        request,
         "partials/report.html",
         {
-            "request": request,
             "run": run,
             "report_html": report_html,
         },

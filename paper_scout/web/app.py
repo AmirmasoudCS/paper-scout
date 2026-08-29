@@ -93,8 +93,14 @@ def create_run(request: Request, query: str = Form(...)):
 
     config = load_config()
     job_id = start_job(query, config)
-    job = get_job(job_id)
 
+    if job_id is None:
+        return HTMLResponse(
+            "<p class='body-text'>A run is already in progress. Wait for it to finish before starting another.</p>",
+            status_code=409,
+        )
+
+    job = get_job(job_id)
     return templates.TemplateResponse(
         request,
         "partials/progress.html",

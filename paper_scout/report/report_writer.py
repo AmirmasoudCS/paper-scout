@@ -23,7 +23,8 @@ from typing import Optional
 
 import re
 
-import pymupdf
+import markdown as md_lib
+from weasyprint import CSS, HTML
 
 
 from paper_scout.utils.models import Paper, PipelineRun
@@ -253,88 +254,71 @@ def write_report(
     return report_path
 
 
-_PDF_PAGE_WIDTH = 595   # A4 in points
-_PDF_PAGE_HEIGHT = 842
-_PDF_MARGIN = 50
-_PDF_BODY_FONT_SIZE = 10
-_PDF_H1_FONT_SIZE = 18
-_PDF_H2_FONT_SIZE = 15
-_PDF_H3_FONT_SIZE = 12
-_PDF_MD_BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
-_PDF_MD_LINK_RE = re.compile(r"\[(.*?)\]\(.*?\)")
-
-
-def _pdf_wrap_line(text: str, font: str, fontsize: float, max_width: float) -> list[str]:
-    """Greedy word-wrap using PyMuPDF's own text-measurement, so wrapped
-    lines actually fit the page at the given font/size."""
-    words = text.split(" ")
-    lines: list[str] = []
-    current = ""
-    for word in words:
-        trial = f"{current} {word}".strip()
-        if pymupdf.get_text_length(trial, fontname=font, fontsize=fontsize) <= max_width:
-            current = trial
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines or [""]
+_PDF_CSS = """
+@page {
+    size: A4;
+    margin: 2.2cm;
+    @bottom-center {
+        content: counter(page);
+        font-size: 8pt;
+        color: #888;
+    }
+}
+body {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #1a1a1a;
+}
+h1 {
+    font-size: 20pt;
+    border-bottom: 2px solid #2c3e50;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    color: #2c3e50;
+}
+h2 {
+    font-size: 14.5pt;
+    margin-top: 28px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+    color: #2c3e50;
+    page-break-after: avoid;
+}
+h3 {
+    font-size: 12pt;
+    margin-top: 20px;
+    color: #222;
+    page-break-after: avoid;
+}
+p { margin: 8px 0; orphans: 3; widows: 3; }
+a { color: #1a5276; text-decoration: none; }
+a:hover { text-decoration: underline; }
+strong { color: #111; }
+em { color: #555; }
+ul, ol { margin: 8px 0 8px 1.4em; }
+li { margin: 3px 0; }
+hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+blockquote {
+    border-left: 3px solid #ccc;
+    margin: 8px 0;
+    padding: 4px 16px;
+    color: #555;
+    font-style: italic;
+}
+"""
 
 
 def markdown_to_pdf(markdown_text: str, dest_path: str | Path) -> None:
     """
-    Render markdown text as a plain, paginated PDF — headings get
-    larger bold text, **bold**/[link](url) syntax is stripped to plain
-    text rather than rendered literally. Not full typesetting (no
-    inline bold, no clickable links) — a lightweight, zero-extra-
-    dependency PDF export of the same content as the .md report.
+    Render markdown text as a properly typeset PDF via markdown -> HTML
+    -> weasyprint, with real headings, bold, clickable links, and print
+    CSS (page numbers, widow/orphan control). Replaces an earlier
+    PyMuPDF-based plain-text renderer that had no inline styling.
     """
-    doc = pymupdf.open()
-    page = doc.new_page(width=_PDF_PAGE_WIDTH, height=_PDF_PAGE_HEIGHT)
-    y = _PDF_MARGIN
-    max_width = _PDF_PAGE_WIDTH - 2 * _PDF_MARGIN
-
-    def new_page() -> None:
-        nonlocal page, y
-        page = doc.new_page(width=_PDF_PAGE_WIDTH, height=_PDF_PAGE_HEIGHT)
-        y = _PDF_MARGIN
-
-    for raw_line in markdown_text.split("\n"):
-        line = raw_line.rstrip()
-
-        heading_level = 0
-        if line.startswith("#"):
-            heading_level = len(line) - len(line.lstrip("#"))
-            line = line.lstrip("#").strip()
-
-        line = _PDF_MD_BOLD_RE.sub(r"\1", line)
-        line = _PDF_MD_LINK_RE.sub(r"\1", line)
-
-        if not line:
-            y += _PDF_BODY_FONT_SIZE + 4
-            if y > _PDF_PAGE_HEIGHT - _PDF_MARGIN:
-                new_page()
-            continue
-
-        if heading_level == 1:
-            font, fontsize = "hebo", _PDF_H1_FONT_SIZE
-        elif heading_level == 2:
-            font, fontsize = "hebo", _PDF_H2_FONT_SIZE
-        elif heading_level == 3:
-            font, fontsize = "hebo", _PDF_H3_FONT_SIZE
-        else:
-            font, fontsize = "helv", _PDF_BODY_FONT_SIZE
-
-        for wrapped_line in _pdf_wrap_line(line, font, fontsize, max_width):
-            if y > _PDF_PAGE_HEIGHT - _PDF_MARGIN:
-                new_page()
-            page.insert_text((_PDF_MARGIN, y), wrapped_line, fontsize=fontsize, fontname=font)
-            y += fontsize + 4
-
-    doc.save(str(dest_path))
-    doc.close()
+    html_body = md_lib.markdown(markdown_text, extensions=["extra", "sane_lists"])
+    html_doc = f"<html><head><meta charset='utf-8'></head><body>{html_body}</body></html>"
+    HTML(string=html_doc).write_pdf(str(dest_path), stylesheets=[CSS(string=_PDF_CSS)])
 
 
 def write_report_pdf(

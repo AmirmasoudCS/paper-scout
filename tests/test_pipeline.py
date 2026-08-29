@@ -452,3 +452,64 @@ def test_run_pipeline_ingest_receives_run_specific_pdf_cache_dir(monkeypatch, tm
 def test_build_pipeline_graph_compiles_without_error():
     app = build_pipeline_graph()
     assert app is not None
+
+def test_run_pipeline_writes_run_metadata_json(monkeypatch, tmp_path, mock_client):
+    config = _patch_all_stages(monkeypatch, tmp_path)
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    import json
+    from pathlib import Path
+
+    run_dir = Path(result.report_path).parent
+    metadata_path = run_dir / "run_metadata.json"
+    assert metadata_path.exists()
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    assert metadata["query"] == "test query"
+    assert metadata["paper_count"] == 1
+    assert metadata["sources"]["arxiv"]["papers_found"] == 1
+    assert metadata["extraction_summary"]["limitations_found"] == 1
+    assert metadata["extraction_summary"]["future_work_found"] == 1
+    assert metadata["future_work_ideation"]["grounded_generated"] is True
+    assert metadata["future_work_ideation"]["inferred_generated"] is True
+    assert metadata["models"]["small"] == "qwen3.5:9b"
+    assert metadata["models"]["large"] == "gemma4:e4b"
+
+
+def test_run_pipeline_metadata_reflects_missing_future_work_tiers(monkeypatch, tmp_path, mock_client):
+    config = _patch_all_stages(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_future_work_ideas",
+        lambda papers, synthesis, client: None,
+    )
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_inferred_future_work_ideas",
+        lambda papers, synthesis, client: None,
+    )
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    import json
+    from pathlib import Path
+
+    run_dir = Path(result.report_path).parent
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+
+    assert metadata["future_work_ideation"]["grounded_generated"] is False
+    assert metadata["future_work_ideation"]["inferred_generated"] is False
+
+
+def test_run_pipeline_metadata_reflects_zero_papers(monkeypatch, tmp_path, mock_client):
+    config = _patch_all_stages(monkeypatch, tmp_path, papers=[])
+
+    result = run_pipeline("test query", config, client=mock_client)
+
+    import json
+    from pathlib import Path
+
+    run_dir = Path(result.report_path).parent
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+
+    assert metadata["paper_count"] == 0
+    assert metadata["extraction_summary"]["limitations_found"] == 0

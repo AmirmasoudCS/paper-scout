@@ -1,7 +1,7 @@
 # paper-scout
 
 <div align="center">
-    <img src="banner.svg">
+    <img src="banner_hand_drawn.svg">
     <p><em>Generated using Claude.</em></p>
 </div>
 

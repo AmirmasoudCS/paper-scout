@@ -16,12 +16,13 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import markdown as md_lib
 
+from paper_scout.web.jobs import get_job, stage_progress, start_job
 from paper_scout.utils.config import load_config
 from paper_scout.web.runs import get_run, get_run_report_markdown, list_runs
 
@@ -80,4 +81,57 @@ def view_run(request: Request, run_id: str):
             "run": run,
             "report_html": report_html,
         },
+    )
+
+@app.post("/runs", response_class=HTMLResponse)
+def create_run(request: Request, query: str = Form(...)):
+    query = query.strip()
+    if not query:
+        return HTMLResponse(
+            "<p class='body-text'>Please enter a research topic.</p>", status_code=400
+        )
+
+    config = load_config()
+    job_id = start_job(query, config)
+    job = get_job(job_id)
+
+    return templates.TemplateResponse(
+        request,
+        "partials/progress.html",
+        {"job_id": job_id, "query": query, "stages": stage_progress(job)},
+    )
+
+
+@app.get("/jobs/{job_id}", response_class=HTMLResponse)
+def job_status(request: Request, job_id: str):
+    job = get_job(job_id)
+    if job is None:
+        return HTMLResponse("<p>Unknown job.</p>", status_code=404)
+
+    if job.status == "error":
+        return templates.TemplateResponse(
+            request, "partials/job_error.html", {"query": job.query, "error": job.error}
+        )
+
+    if job.status == "done":
+        run = get_run(_output_dir(), job.run_id)
+        report_html = _render_markdown(get_run_report_markdown(_output_dir(), job.run_id))
+        response = templates.TemplateResponse(
+            request, "partials/report.html", {"run": run, "report_html": report_html}
+        )
+        response.headers["HX-Trigger"] = "runsChanged"
+        return response
+
+    return templates.TemplateResponse(
+        request,
+        "partials/progress.html",
+        {"job_id": job_id, "query": job.query, "stages": stage_progress(job)},
+    )
+
+
+@app.get("/partials/run-list", response_class=HTMLResponse)
+def run_list_partial(request: Request):
+    runs = list_runs(_output_dir())
+    return templates.TemplateResponse(
+        request, "partials/run_list.html", {"runs": runs, "selected_run_id": None}
     )

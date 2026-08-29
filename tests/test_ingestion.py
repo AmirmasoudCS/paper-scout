@@ -228,6 +228,66 @@ def test_fetch_pdf_returns_none_when_no_pdf_url(tmp_path):
     result = fetch_pdf(paper, cache_dir=tmp_path)
     assert result is None
 
+from paper_scout.ingestion.pdf_fetch import copy_cached_pdfs
+
+
+def test_copy_cached_pdfs_copies_existing_cache_entries(tmp_path, well_formed_pdf):
+    from paper_scout.ingestion.pdf_fetch import _cache_path
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    dest_dir = tmp_path / "run_folder" / "pdfs"
+
+    paper = _sample_paper()
+    cached_path = _cache_path(paper, cache_dir)
+    cached_path.write_bytes(well_formed_pdf.read_bytes())
+
+    result = copy_cached_pdfs([paper], cache_dir=cache_dir, dest_dir=dest_dir)
+
+    copied_path = dest_dir / cached_path.name
+    assert result[paper.dedupe_key()] == copied_path
+    assert copied_path.exists()
+    assert copied_path.read_bytes() == well_formed_pdf.read_bytes()
+    # original cache entry must be untouched, not moved
+    assert cached_path.exists()
+
+
+def test_copy_cached_pdfs_skips_papers_with_nothing_cached(tmp_path):
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    dest_dir = tmp_path / "run_folder" / "pdfs"
+
+    paper = _sample_paper()  # nothing written to cache for this paper
+
+    result = copy_cached_pdfs([paper], cache_dir=cache_dir, dest_dir=dest_dir)
+
+    assert result[paper.dedupe_key()] is None
+    assert not any(dest_dir.iterdir()) if dest_dir.exists() else True
+
+
+def test_copy_cached_pdfs_one_missing_paper_does_not_block_others(tmp_path, well_formed_pdf):
+    from paper_scout.ingestion.pdf_fetch import _cache_path
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    dest_dir = tmp_path / "run_folder" / "pdfs"
+
+    cached_paper = _sample_paper()
+    missing_paper = Paper(
+        title="No PDF Cached",
+        authors=["A. Researcher"],
+        abstract="x",
+        source=SourceName.ARXIV,
+        arxiv_id="9999.99999",
+        pdf_url="https://arxiv.org/pdf/9999.99999",
+    )
+    cached_path = _cache_path(cached_paper, cache_dir)
+    cached_path.write_bytes(well_formed_pdf.read_bytes())
+
+    result = copy_cached_pdfs([cached_paper, missing_paper], cache_dir=cache_dir, dest_dir=dest_dir)
+
+    assert result[cached_paper.dedupe_key()] is not None
+    assert result[missing_paper.dedupe_key()] is None
 
 def test_fetch_pdf_uses_cache_on_second_call(tmp_path, well_formed_pdf):
     """If a file already exists at the computed cache path, fetch_pdf should

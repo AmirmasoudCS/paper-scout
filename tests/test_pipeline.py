@@ -249,6 +249,10 @@ def _patch_all_stages(monkeypatch, tmp_path, papers=None):
         "paper_scout.pipeline.generate_future_work_ideas",
         lambda papers, synthesis, client: "Fake future work ideas.",
     )
+    monkeypatch.setattr(
+        "paper_scout.pipeline.generate_inferred_future_work_ideas",
+        lambda papers, synthesis, client: "Fake inferred future work ideas.",
+    )
 
     config = {**SAMPLE_CONFIG, "report": {**SAMPLE_CONFIG["report"], "output_dir": str(tmp_path)}}
     return config

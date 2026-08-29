@@ -42,7 +42,6 @@ SAMPLE_CONFIG = {
         "dedupe_similarity_threshold": 0.9,
     },
     "ingestion": {
-        "pdf_cache_dir": "outputs/pdf_cache",
         "download_timeout_seconds": 30,
         "target_sections": ["abstract", "conclusion", "limitations", "future work"],
         "fallback_to_abstract_only": True,

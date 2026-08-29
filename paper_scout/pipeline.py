@@ -125,10 +125,11 @@ def node_dedupe_and_rank(state: PipelineState) -> dict:
 
 def node_ingest(state: PipelineState) -> dict:
     logger.info("Ingesting PDFs/sections for %d papers", len(state["papers"]))
-    # Per-run ingestion config: PDFs go straight into this run's own
-    # pdfs/ folder, not a shared cross-run cache.
+    pdf_dir = state["run_dir"] / "pdfs"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+
     ingestion_cfg = dict(state["config"]["ingestion"])
-    ingestion_cfg["pdf_cache_dir"] = str(state["run_dir"] / "pdfs")
+    ingestion_cfg["pdf_cache_dir"] = str(pdf_dir)
     papers = ingest_papers(state["papers"], ingestion_cfg)
     return {"papers": papers}
 

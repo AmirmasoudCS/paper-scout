@@ -33,6 +33,10 @@ def _paper_with_summary(title: str = "Grounded Future-Work Ideation") -> Paper:
         pdf_url="https://arxiv.org/pdf/2401.00001",
         published_date=date(2024, 1, 15),
         citation_count=12,
+        extracted_sections=ExtractedSections(
+            limitations="Only evaluated on English-language CS papers.",
+            future_work="Future work should extend to multilingual settings.",
+        ),
         summary=PaperSummary(
             problem="Ungrounded LLM ideation tends to be generic.",
             method="Ground ideation in retrieved paper text via RAG.",

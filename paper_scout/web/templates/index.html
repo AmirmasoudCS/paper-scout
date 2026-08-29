@@ -9,10 +9,16 @@
       <div class="brand-title">paper-scout</div>
     </div>
 
-    <button class="new-run-btn">New search</button>
+    <button class="new-run-btn" onclick="document.getElementById('modalOverlay').classList.add('open')">New search</button>
 
     <div class="drawer-label">Past runs</div>
-    <div class="run-list" id="run-list">
+    <div
+      class="run-list"
+      id="run-list"
+      hx-trigger="runsChanged from:body"
+      hx-get="/partials/run-list"
+      hx-swap="innerHTML"
+    >
       {% include "partials/run_list.html" %}
     </div>
   </aside>
@@ -21,6 +27,30 @@
     {% include "partials/report.html" %}
   </main>
 
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-eyebrow">New search</div>
+    <h3>What should paper-scout look into?</h3>
+
+    <form
+      hx-post="/runs"
+      hx-target="#report-pane"
+      hx-swap="innerHTML"
+      hx-on::after-request="document.getElementById('modalOverlay').classList.remove('open'); this.reset();"
+    >
+      <div class="field-group">
+        <label for="queryInput">Research topic</label>
+        <input type="text" id="queryInput" name="query" placeholder="e.g. sparse attention for long-context transformers" autofocus required>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="document.getElementById('modalOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Start search</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 {% endblock %}

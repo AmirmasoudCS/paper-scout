@@ -10,7 +10,7 @@
 
 paper-scout is an agentic pipeline that takes a research topic as input, searches multiple paper sources, and produces a report summarizing recent work in that area. The standout feature is future work ideation that is grounded in the actual Limitations and Future Work sections extracted from the papers themselves, rather than free form brainstorming from a language model. Where a paper doesn't have those sections, the pipeline still offers a second, clearly labeled tier of inferred directions instead of silently skipping the paper.
 
-The whole thing runs locally through Ollama, using a small model for per paper summarization and a larger model for cross paper synthesis and ideation.
+The whole thing runs locally through Ollama, using a small model for per paper summarization and a larger model for cross paper synthesis and ideation. It can be used from the command line or through a local web interface.
 
 ## 🔍 What it does
 
@@ -26,7 +26,7 @@ Give it a query like `"diffusion models for audio"` and it will:
    - **Inferred** directions, for papers with no extractable Limitations/Future Work section, reasoned from the paper's problem, method, and key result instead. These are always explicitly tagged `[Inferred, not author-stated]` so they are never mistaken for grounded ones
 7. Write everything to a self contained per run output folder: a markdown report, a PDF version of the same report, the metadata of the run, and the downloaded PDFs for every paper in the run
 
-You run one command and get one folder. No intermediate prompts, no manual steps in between.
+You run one command or one click and get one folder. No intermediate prompts, no manual steps in between.
 
 ## 🧠 Key concepts
 
@@ -64,9 +64,45 @@ ollama pull gemma4:e4b
 
 ## 🚀 Usage
 
+### Command line
+
 ```bash
 python -m paper_scout "your research topic here"
 ```
+
+### Web interface
+
+```bash
+uvicorn paper_scout.web.app:app --reload
+```
+
+Then open `http://127.0.0.1:8000` in your browser. Click **New search**, enter a topic, and watch the run progress stage by stage in real time. Past runs are listed in the sidebar and can be reopened at any point.
+
+<p align="center">
+  <img src="assets/screenshots/fetching_sources.png" width="90%">
+</p>
+
+Each pipeline stage is shown as it completes:
+
+<p align="center">
+  <img src="assets/screenshots/deduping_and_ranking.png" width="49%">
+  <img src="assets/screenshots/summarizing.png" width="49%">
+  <img src="assets/screenshots/synthesizing.png" width="49%">
+  <img src="assets/screenshots/generating_future_work.png" width="49%">
+</p>
+
+Once a run finishes, the report is rendered directly in the browser, including the two future work tiers side by side:
+
+<p align="center">
+  <img src="assets/screenshots/general_veiw_of_query_result.png" width="90%">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/future_work.png" width="49%">
+  <img src="assets/screenshots/future_work_inferred.png" width="49%">
+</p>
+
+Both the command line and the web interface run the exact same pipeline and write to the same `outputs/` folder, so a run started from one can be opened from the other.
 
 Each run creates its own folder under `outputs/`, named after your query and the date, containing:
 
@@ -96,9 +132,15 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 ## 📁 Project structure
 
 ```
-📁 
+📁
+├── 📁 assets
+│   └── 📁 screenshots
 ├── 📁 log
 ├── 📁 outputs
+│   ├── 📁 lstm-in-predicting-the-trading-stocks_2026-08-29
+│   │   ├── 📁 pdfs
+│   │   ├── 📘 report.md
+│   │   └── 🧩 run_metadata.json
 │   └── 📁 neural-networks-architecture-and-their-impact-on-accuracy_2026-08-29
 │       ├── 📁 pdfs
 │       ├── 📘 report.md
@@ -139,6 +181,22 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   │   ├── 🐍 config.py
 │   │   ├── 🐍 logging_config.py
 │   │   └── 🐍 models.py
+│   ├── 📁 web
+│   │   ├── 📁 static
+│   │   │   └── 🎨 style.css
+│   │   ├── 📁 templates
+│   │   │   ├── 📁 partials
+│   │   │   │   ├── 🌐 job_error.html
+│   │   │   │   ├── 🌐 progress.html
+│   │   │   │   ├── 🌐 report.html
+│   │   │   │   └── 🌐 run_list.html
+│   │   │   ├── 🌐 base.html
+│   │   │   ├── 🌐 index.html
+│   │   │   └── 🌐 new_run_modal.html
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 app.py
+│   │   ├── 🐍 jobs.py
+│   │   └── 🐍 runs.py
 │   ├── 🐍 __init__.py
 │   ├── 🐍 __main__.py
 │   ├── 🐍 cli.py
@@ -158,7 +216,7 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   ├── 🐍 test_sources.py
 │   ├── 🐍 test_summarize.py
 │   └── 🐍 test_synthesize.py
-├── 📄 banner.svg
+├── 📄 banner_hand_drawn.svg
 ├── 📄 config.yaml
 ├── ⚖️ LICENSE
 ├── ⚙️ pyproject.toml
@@ -181,7 +239,8 @@ Tests marked `ollama` or `network` require a running local Ollama server or live
 - Every source fetcher and pipeline stage is designed to fail gracefully. One source or paper failing does not stop the whole run.
 - Section extraction is column aware. It correctly handles two column academic PDF layouts instead of interleaving text from adjacent columns, and heading detection distinguishes real section headings from ordinary body text that happens to wrap onto its own line.
 - Future work ideation is two tiered. The grounded tier will refuse to run rather than fall back to ungrounded brainstorming if none of the papers have extractable Limitations or Future Work text. The inferred tier picks up the papers the grounded tier cannot use, reasoning only from each paper's problem, method, and key result summary, and is always rendered in its own clearly labeled report section, never blended with the grounded output.
-- A web interface and query history are planned as future additions but are not part of the current scope.
+- The web interface shows live, stage by stage progress for a running query and lets you browse every past run from the same place. Both the CLI and the web interface call the same pipeline underneath.
+- Query history search and comparing runs against each other are planned as future additions but are not part of the current scope.
 
 ## ⚖️ License
 

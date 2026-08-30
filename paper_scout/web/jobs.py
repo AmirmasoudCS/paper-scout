@@ -51,6 +51,7 @@ _STAGE_ORDER = list(_STAGE_LABELS.keys())
 class JobState:
     job_id: str
     query: str
+    original_query: Optional[str] = None
     status: str = "running"  # running | done | error
     completed_stages: list[str] = field(default_factory=list)
     error: Optional[str] = None
@@ -98,13 +99,17 @@ def is_run_in_progress() -> bool:
         return _active_job_id is not None
 
 
-def start_job(query: str, config: dict) -> Optional[str]:
+def start_job(query: str, config: dict, original_query: Optional[str] = None) -> Optional[str]:
     """
     Starts a new background pipeline run. Returns the new job_id, or
     None if a run is already in progress — only one run is allowed at
     a time, since a second concurrent run would hit the same local
     Ollama server simultaneously and slow both down (or worse, on
     memory-constrained setups).
+
+    original_query, when given, is the raw text the user typed before
+    query refinement — kept only for the run's audit trail
+    (run_metadata.json); it never changes what's actually searched.
     """
     global _active_job_id
 
@@ -112,16 +117,20 @@ def start_job(query: str, config: dict) -> Optional[str]:
         if _active_job_id is not None:
             return None
         job_id = uuid.uuid4().hex[:12]
-        job = JobState(job_id=job_id, query=query)
+        job = JobState(job_id=job_id, query=query, original_query=original_query)
         _jobs[job_id] = job
         _active_job_id = job_id
 
-    thread = threading.Thread(target=_run_job, args=(job, query, config), daemon=True)
+    thread = threading.Thread(
+        target=_run_job, args=(job, query, config, original_query), daemon=True
+    )
     thread.start()
     return job_id
 
 
-def _run_job(job: JobState, query: str, config: dict) -> None:
+def _run_job(
+    job: JobState, query: str, config: dict, original_query: Optional[str] = None
+) -> None:
     global _active_job_id
     try:
         client = OllamaClient.from_config(config)
@@ -136,9 +145,13 @@ def _run_job(job: JobState, query: str, config: dict) -> None:
             raise RuntimeError(f"Configured model(s) for {missing} not found locally.")
 
         graph = build_pipeline_graph()
+        initial_state: dict = {"query": query, "config": config, "client": client}
+        if original_query and original_query != query:
+            initial_state["original_query"] = original_query
+
         final_state: dict = {}
 
-        for chunk in graph.stream({"query": query, "config": config, "client": client}):
+        for chunk in graph.stream(initial_state):
             for node_name, node_output in chunk.items():
                 final_state.update(node_output)
                 job.completed_stages.append(node_name)

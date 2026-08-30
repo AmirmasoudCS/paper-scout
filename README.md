@@ -79,6 +79,10 @@ uvicorn paper_scout.web.app:app --reload
 Then open `http://127.0.0.1:8000` in your browser. Click **New search**, enter a topic, and watch the run progress stage by stage in real time. Past runs are listed in the sidebar and can be reopened at any point.
 
 <p align="center">
+  <img src="assets/screenshots/search.png" width="60%">
+</p>
+
+<p align="center">
   <img src="assets/screenshots/fetching_sources.png" width="90%">
 </p>
 

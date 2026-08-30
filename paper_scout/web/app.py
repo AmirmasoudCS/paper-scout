@@ -129,7 +129,10 @@ def _wrap_future_work_sections(markdown_text: str) -> str:
 def _render_markdown(markdown_text: Optional[str]) -> Optional[str]:
     if markdown_text is None:
         return None
-    return md_lib.markdown(markdown_text, extensions=["extra", "sane_lists", "toc"])
+    markdown_text = _wrap_future_work_sections(markdown_text)
+    return md_lib.markdown(
+        markdown_text, extensions=["extra", "sane_lists", "toc", "md_in_html"]
+    )
 
 
 @app.get("/", response_class=HTMLResponse)

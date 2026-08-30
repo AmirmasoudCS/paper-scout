@@ -45,6 +45,13 @@
         <input type="text" id="queryInput" name="query" placeholder="e.g. sparse attention for long-context transformers" autofocus required>
       </div>
 
+      <div class="field-group" style="margin-bottom: 10px;">
+        <label class="checkbox-row" style="margin-bottom: 0;">
+          <input type="checkbox" name="refine" value="1">
+          Improve my search query (fix typos, tighten phrasing)
+        </label>
+      </div>
+
       <div class="modal-actions">
         <button type="button" class="btn" onclick="document.getElementById('modalOverlay').classList.remove('open')">Cancel</button>
         <button type="submit" class="btn btn-primary">Start search</button>

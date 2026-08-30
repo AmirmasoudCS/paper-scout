@@ -63,6 +63,7 @@ logger = logging.getLogger(__name__)
 
 class PipelineState(TypedDict, total=False):
     query: str
+    original_query: Optional[str]  # set only when the web/CLI layer refined the query first
     config: dict
     client: OllamaClient
     run_dir: Path
@@ -170,6 +171,7 @@ def node_inferred_future_work(state: PipelineState) -> dict:
 
 def _build_run_metadata(state: PipelineState, run: PipelineRun) -> dict:
     papers = state["papers"]
+    original_query = state.get("original_query")
 
     def _count(field: str) -> int:
         return sum(
@@ -180,6 +182,8 @@ def _build_run_metadata(state: PipelineState, run: PipelineRun) -> dict:
 
     return {
         "query": state["query"],
+        "original_query": original_query,
+        "query_was_refined": bool(original_query) and original_query != state["query"],
         "run_timestamp": state["run_timestamp"].isoformat() + "Z",
         "paper_count": len(papers),
         "sources": state.get("source_stats", {}),

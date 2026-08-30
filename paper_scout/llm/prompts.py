@@ -212,3 +212,29 @@ Do not use general knowledge of the field beyond what's stated above. If a paper
 doesn't clearly imply any next step, skip it rather than inventing one."""
 
     return INFERRED_FUTURE_WORK_SYSTEM_PROMPT, user_prompt
+
+# ── Query refinement (small model, optional pre-pipeline step) ─────
+
+
+QUERY_REFINE_SYSTEM_PROMPT = """You correct spelling and grammar in short research search \
+queries and rephrase them into effective search phrasing for academic paper search engines \
+(arXiv, Semantic Scholar). You preserve the user's original intent and scope exactly — you \
+never add topics, constraints, or specificity the user didn't ask for. You respond with ONLY \
+the corrected query text on a single line: no quotes, no explanation, no markdown, nothing else."""
+
+
+def build_query_refine_prompt(raw_query: str) -> tuple[str, str]:
+    """
+    Build the (system, user) prompt for optional query refinement.
+    Fixes spelling/grammar and lightly tightens phrasing — deliberately
+    NOT asked to broaden scope or add specificity the user didn't type.
+    """
+    user_prompt = f"""Correct spelling and grammar, and lightly tighten the phrasing of the \
+following research search query. Keep the same topic, scope, and intent — do not broaden or \
+narrow it, do not add anything not implied by the original.
+
+Query: {raw_query}
+
+Respond with ONLY the corrected query text."""
+
+    return QUERY_REFINE_SYSTEM_PROMPT, user_prompt

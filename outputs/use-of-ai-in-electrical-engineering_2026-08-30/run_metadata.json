@@ -1,0 +1,35 @@
+{
+  "query": "Use of AI in electrical engineering",
+  "original_query": "uSe oF ai in electrical ingineering",
+  "query_was_refined": true,
+  "run_timestamp": "2026-08-30T08:42:23.911047Z",
+  "paper_count": 10,
+  "sources": {
+    "arxiv": {
+      "enabled": true,
+      "papers_found": 10
+    },
+    "semantic_scholar": {
+      "enabled": true,
+      "papers_found": 4
+    },
+    "huggingface_papers": {
+      "enabled": true,
+      "papers_found": 10
+    }
+  },
+  "extraction_summary": {
+    "abstract_found": 10,
+    "conclusion_found": 6,
+    "limitations_found": 1,
+    "future_work_found": 1
+  },
+  "future_work_ideation": {
+    "grounded_generated": true,
+    "inferred_generated": true
+  },
+  "models": {
+    "small": "qwen3.5:9b",
+    "large": "gemma4:e4b"
+  }
+}

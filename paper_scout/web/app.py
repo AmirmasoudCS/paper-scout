@@ -14,6 +14,9 @@ from __future__ import annotations
 
 import re
 
+from paper_scout.llm.ollama_client import OllamaClient
+from paper_scout.llm.query_refine import refine_search_query
+
 import logging
 from pathlib import Path
 from typing import Optional
@@ -174,7 +177,12 @@ def view_run(request: Request, run_id: str):
     )
 
 @app.post("/runs", response_class=HTMLResponse)
-def create_run(request: Request, query: str = Form(...)):
+def create_run(
+    request: Request,
+    query: str = Form(...),
+    refine: Optional[str] = Form(None),
+    original_query: Optional[str] = Form(None),
+):
     query = query.strip()
     if not query:
         return HTMLResponse(
@@ -182,7 +190,26 @@ def create_run(request: Request, query: str = Form(...)):
         )
 
     config = load_config()
-    job_id = start_job(query, config)
+
+    if refine:
+        # First step of the refine flow: don't start the job yet — show
+        # a confirmation screen so the user sees exactly what changed
+        # and can edit or cancel before anything runs.
+        client = OllamaClient.from_config(config)
+        refinement = refine_search_query(query, client)
+        return templates.TemplateResponse(
+            request,
+            "partials/refine_confirm.html",
+            {
+                "original_query": refinement.original,
+                "suggested_query": refinement.refined or refinement.original,
+                "refinement_failed": refinement.refined is None,
+                "refinement_error": refinement.error,
+                "changed": refinement.changed,
+            },
+        )
+
+    job_id = start_job(query, config, original_query=original_query)
 
     if job_id is None:
         return HTMLResponse(

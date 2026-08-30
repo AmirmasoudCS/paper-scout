@@ -216,3 +216,43 @@ def test_run_list_partial_shows_empty_state_when_no_runs(client):
 
     assert response.status_code == 200
     assert "No runs yet" in response.text
+
+def test_index_renders_grounded_and_inferred_future_work_as_distinct_cards(client, patch_output_dir):
+    report_text = (
+        "# Research Report\n\n"
+        "## Future Work Ideas\n\n"
+        "1. Multilingual grounding — extend beyond English-only evaluation.\n\n"
+        "## Future Work Ideas (Inferred)\n\n"
+        "[Inferred, not author-stated] Cross-lingual transfer.\n\n"
+        "## Papers\n\n"
+        "Some paper content.\n"
+    )
+    _make_run_dir(
+        patch_output_dir, "topic_2026-08-29", metadata={"query": "topic"}, report_text=report_text
+    )
+
+    response = client.get("/")
+
+    assert 'class="fw-card grounded"' in response.text
+    assert 'class="fw-card inferred"' in response.text
+    assert "Multilingual grounding" in response.text
+    assert "Cross-lingual transfer" in response.text
+
+
+def test_index_does_not_wrap_future_work_section_when_no_ideas_generated(client, patch_output_dir):
+    report_text = (
+        "# Research Report\n\n"
+        "## Future Work Ideas\n\n"
+        "*No grounded future-work ideas were generated for this run — this can happen "
+        "if no paper had extractable Limitations/Future Work sections.*\n\n"
+        "## Papers\n\n"
+        "Some paper content.\n"
+    )
+    _make_run_dir(
+        patch_output_dir, "topic_2026-08-29", metadata={"query": "topic"}, report_text=report_text
+    )
+
+    response = client.get("/")
+
+    assert 'class="fw-card grounded"' not in response.text
+    assert "No grounded future-work ideas" in response.text

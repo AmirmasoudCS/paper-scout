@@ -256,7 +256,12 @@ def build_pipeline_graph():
     return graph.compile()
 
 
-def run_pipeline(query: str, config: dict, client: Optional[OllamaClient] = None) -> PipelineRun:
+def run_pipeline(
+    query: str,
+    config: dict,
+    client: Optional[OllamaClient] = None,
+    original_query: Optional[str] = None,
+) -> PipelineRun:
     """
     Run the full end-to-end pipeline for `query` and return the
     resulting PipelineRun (report already written to disk at
@@ -266,6 +271,9 @@ def run_pipeline(query: str, config: dict, client: Optional[OllamaClient] = None
     against the locally pulled Ollama models first so a missing/
     misnamed model fails fast with a clear message instead of a
     confusing silent-empty-report failure four stages later.
+
+    original_query, when given and different from query, is recorded
+    in run_metadata.json only — it never changes what's searched.
     """
     if client is None:
         client = OllamaClient.from_config(config)
@@ -285,5 +293,9 @@ def run_pipeline(query: str, config: dict, client: Optional[OllamaClient] = None
         )
 
     app = build_pipeline_graph()
-    final_state = app.invoke({"query": query, "config": config, "client": client})
+    initial_state = {"query": query, "config": config, "client": client}
+    if original_query and original_query != query:
+        initial_state["original_query"] = original_query
+
+    final_state = app.invoke(initial_state)
     return final_state["pipeline_run"]

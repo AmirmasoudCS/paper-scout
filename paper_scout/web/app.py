@@ -12,6 +12,8 @@ Run locally with:
 
 from __future__ import annotations
 
+import re
+
 import logging
 from pathlib import Path
 from typing import Optional
@@ -39,6 +41,90 @@ def _output_dir() -> Path:
     config = load_config()
     return Path(config.get("report", {}).get("output_dir", "outputs"))
 
+_FW_GROUNDED_HEADING_RE = re.compile(r"^## Future Work Ideas$", re.MULTILINE)
+_FW_INFERRED_HEADING_RE = re.compile(r"^## Future Work Ideas \(Inferred\)$", re.MULTILINE)
+_NEXT_HEADING_RE = re.compile(r"^## ", re.MULTILINE)
+
+_FW_GROUNDED_EMPTY_MARKER = "No grounded future-work ideas were generated"
+_FW_INFERRED_EMPTY_MARKER = "No inferred future-work ideas were generated"
+
+_FW_LEGEND_HTML = (
+    '<div class="fw-legend">'
+    '<div class="fw-legend-item"><span class="fw-swatch grounded"></span> '
+    "Grounded — traceable to the authors' own words</div>"
+    '<div class="fw-legend-item"><span class="fw-swatch inferred"></span> '
+    "Inferred — model-derived, not author-stated</div>"
+    "</div>\n\n"
+)
+
+
+def _section_body_span(markdown_text: str, heading_re: re.Pattern) -> Optional[tuple[int, int]]:
+    """(start, end) char offsets for the section body right after a
+    heading matched by heading_re, up to the next '## ' heading or end
+    of text. None if the heading isn't present."""
+    match = heading_re.search(markdown_text)
+    if match is None:
+        return None
+    body_start = match.end()
+    next_heading = _NEXT_HEADING_RE.search(markdown_text, pos=body_start + 1)
+    body_end = next_heading.start() if next_heading else len(markdown_text)
+    return body_start, body_end
+
+
+def _wrap_future_work_section(
+    markdown_text: str,
+    heading_re: re.Pattern,
+    css_class: str,
+    label: str,
+    empty_marker: str,
+    prefix_html: str = "",
+) -> str:
+    span = _section_body_span(markdown_text, heading_re)
+    if span is None:
+        return markdown_text
+
+    body_start, body_end = span
+    body = markdown_text[body_start:body_end]
+
+    if empty_marker in body:
+        # Nothing to visually distinguish — leave the "not available" note as plain text.
+        return markdown_text
+
+    wrapped = (
+        f"\n\n{prefix_html}"
+        f'<div class="fw-card {css_class}" markdown="1">\n\n'
+        f'<span class="fw-tag {css_class}">{label}</span>\n\n'
+        f"{body.strip()}\n\n"
+        f"</div>\n\n"
+    )
+    return markdown_text[:body_start] + wrapped + markdown_text[body_end:]
+
+
+def _wrap_future_work_sections(markdown_text: str) -> str:
+    """
+    Wraps the Future Work Ideas / Future Work Ideas (Inferred) section
+    bodies in distinguishing containers (solid grounded card, dashed
+    inferred card) — the same visual distinction established in the
+    design mockup. Only affects this web rendering path: report.md and
+    report.pdf are untouched, since raw HTML wrappers with markdown="1"
+    won't render correctly on GitHub's plain markdown viewer.
+    """
+    markdown_text = _wrap_future_work_section(
+        markdown_text,
+        _FW_GROUNDED_HEADING_RE,
+        "grounded",
+        "Grounded",
+        _FW_GROUNDED_EMPTY_MARKER,
+        prefix_html=_FW_LEGEND_HTML,
+    )
+    markdown_text = _wrap_future_work_section(
+        markdown_text,
+        _FW_INFERRED_HEADING_RE,
+        "inferred",
+        "Inferred",
+        _FW_INFERRED_EMPTY_MARKER,
+    )
+    return markdown_text
 
 def _render_markdown(markdown_text: Optional[str]) -> Optional[str]:
     if markdown_text is None:

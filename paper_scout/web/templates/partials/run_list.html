@@ -7,6 +7,7 @@
 {% for run in runs %}
   <button
     class="run-card {% if run.run_id == selected_run_id %}active{% endif %}"
+    data-run-id="{{ run.run_id }}"
     hx-get="/runs/{{ run.run_id }}"
     hx-target="#report-pane"
     hx-swap="innerHTML"

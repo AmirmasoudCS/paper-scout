@@ -46,7 +46,7 @@ You run one command or one click and get one folder. No intermediate prompts, no
   - `qwen3.5:9b`: small model used for per-paper summarization
   - `gemma4:e4b`: larger model used for cross-paper synthesis and future-work ideation
   You can change the model names, temperatures, token limits, and timeout in `config.yaml`:
- 
+
   ```yaml
   llm:
     provider: "ollama"
@@ -66,7 +66,7 @@ You run one command or one click and get one folder. No intermediate prompts, no
 - Roughly 32GB RAM recommended for comfortable CPU offload of the larger model
 - [FFmpeg](https://ffmpeg.org/) installed and available on your system `PATH` for voice input and audio processing
 - A Piper TTS voice model for spoken answers. By default, `config.yaml` expects:
-  
+
   ```yaml
   qa:
     tts_voice_path: "models/en_US-lessac-medium.onnx"

@@ -3,11 +3,18 @@
   const panel = document.querySelector('.ask-panel');
   if (!panel) return;
 
+  const askPane = document.getElementById('ask-pane');
+
+  if (!askPane) {
+    console.error('paper-scout: #ask-pane not found');
+    return;
+  }
+
   function getCurrentRunId() {
-    const runId = panel.dataset.runId;
+    const runId = askPane.dataset.runId;
 
     if (!runId) {
-      console.error('paper-scout: no run ID found for assistant panel');
+      console.error('paper-scout: no run ID found for assistant');
       return null;
     }
 

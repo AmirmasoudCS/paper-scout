@@ -1,200 +1,594 @@
 """
-Unit tests for paper_scout.llm.query_refine.
+Prompt evaluation tests for paper_scout.llm.query_refine.
 
-These tests mock the OllamaClient.generate_small call directly.
-They test the Python behavior around query refinement, not the quality
-of the refinement prompt itself.
+Unlike tests/test_query_refine.py, these tests intentionally call the
+real local Ollama model. They evaluate the QUALITY of the query-refinement
+prompt rather than the Python plumbing around it.
 
-Prompt quality is evaluated separately in:
-    tests/prompt_eval/test_query_refine.py
+Run with:
+
+    $env:RUN_PROMPT_EVAL="1"
+    pytest tests/prompt_eval/test_query_refine.py -v -s
+
+These tests deliberately do NOT require an exact model response.
+
+Small local models are probabilistic, and several different phrasings
+can be equally good search queries.
+
+The evaluation focuses on:
+
+- spelling correction
+- grammar/phrasing cleanup
+- preservation of the original research intent
+- preservation of important technical terms
+- preservation of acronyms
+- avoiding unnecessary scope expansion
+- producing concise academic-search phrasing
 """
 
 from __future__ import annotations
 
+import os
+import re
+
+import pytest
+
+from paper_scout.llm.ollama_client import OllamaClient
+from paper_scout.llm.prompts import build_query_refine_prompt
 from paper_scout.llm.query_refine import refine_search_query
+from paper_scout.utils.config import load_config
 
 
-class _StubClient:
-    """Minimal stand-in for OllamaClient.generate_small."""
+# ---------------------------------------------------------------------------
+# Evaluation cases
+# ---------------------------------------------------------------------------
 
-    def __init__(self, response: str | None):
-        self._response = response
-        self.calls: list[tuple[str, str | None]] = []
+CASES = [
+    {
+        "name": "obvious spelling mistakes",
+        "query": "difusion modles for audeo genration",
+        "required_terms": ["diffusion", "audio", "generation"],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "deep learning medical imaging",
+        "query": "deep lerning for medical image analisis",
+        "required_terms": ["deep learning", "medical", "image"],
+        "expected_changes": ["spelling", "phrasing"],
+    },
+    {
+        "name": "mixed capitalization",
+        "query": "DEEP LEARNING FOR MEDICAL IMAGE ANALYSIS",
+        "required_terms": ["deep learning", "medical", "image", "analysis"],
+        "expected_changes": ["capitalization"],
+    },
+    {
+        "name": "bad grammar",
+        "query": "machine learning methods for detect cancer in medical images",
+        "required_terms": ["machine learning", "cancer", "medical", "images"],
+        "expected_changes": ["grammar", "phrasing"],
+    },
+    {
+        "name": "transformer NLP",
+        "query": "transformer models for text clasification",
+        "required_terms": ["transformer", "text", "classification"],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "sentiment analysis",
+        "query": (
+            "transformers for natural language procesing "
+            "and sentiment analisis"
+        ),
+        "required_terms": [
+            "transformer",
+            "natural language",
+            "sentiment",
+            "analysis",
+        ],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "RAG acronym preservation",
+        "query": "llms for retrieval augmented generation",
+        "required_terms": ["LLM", "RAG"],
+        "expected_changes": ["phrasing", "acronym normalization"],
+    },
+    {
+        "name": "RAG question answering",
+        "query": "retrieval augmented generation for question answering",
+        "required_terms": [
+            "retrieval",
+            "augmented",
+            "generation",
+            "question",
+            "answering",
+        ],
+        "expected_changes": [],
+    },
+    {
+        "name": "vision transformers",
+        "query": "vision transformers for image clasification",
+        "required_terms": [
+            "vision transformer",
+            "image",
+            "classification",
+        ],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "reinforcement learning robotics",
+        "query": "reinforcment learning for robot navigaton",
+        "required_terms": [
+            "reinforcement learning",
+            "robot",
+            "navigation",
+        ],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "research question",
+        "query": (
+            "what is the impact of federated learning "
+            "on privacy in healthcare?"
+        ),
+        "required_terms": [
+            "federated learning",
+            "privacy",
+            "healthcare",
+        ],
+        "expected_changes": ["phrasing"],
+    },
+    {
+        "name": "specific medical application",
+        "query": (
+            "deep learning for diabetic retinopathy detection "
+            "in retinal images"
+        ),
+        "required_terms": [
+            "deep learning",
+            "diabetic retinopathy",
+            "detection",
+            "retinal",
+        ],
+        "expected_changes": [],
+    },
+    {
+        "name": "LLM hallucinations",
+        "query": "papers on LLM halucinations in RAG systems",
+        "required_terms": ["LLM", "hallucination", "RAG"],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "local model constraint",
+        "query": (
+            "LLM hallucinations in RAG systems particulary "
+            "when using small local models"
+        ),
+        "required_terms": [
+            "LLM",
+            "hallucination",
+            "RAG",
+            "small",
+            "local",
+        ],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "retrieval comparison",
+        "query": (
+            "comparison of retrival methods in RAG and their impact "
+            "on large language model answer quality"
+        ),
+        "required_terms": [
+            "retrieval",
+            "RAG",
+            "large language model",
+            "answer quality",
+        ],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "compound technical query",
+        "query": (
+            "effect of chunk size and embedding models "
+            "on RAG retrival performance"
+        ),
+        "required_terms": [
+            "chunk",
+            "embedding",
+            "RAG",
+            "retrieval",
+        ],
+        "expected_changes": ["spelling"],
+    },
+    {
+        "name": "lowercase technical acronyms",
+        "query": "rag with llm for question answering",
+        "required_terms": ["RAG", "LLM", "question answering"],
+        "expected_changes": [
+            "capitalization",
+            "acronym normalization",
+        ],
+    },
+    {
+        "name": "very short query",
+        "query": "graph neural networks",
+        "required_terms": ["graph neural network"],
+        "expected_changes": [],
+    },
+]
 
-    def generate_small(self, prompt, system=None):
-        self.calls.append((prompt, system))
-        return self._response
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-def test_refine_search_query_returns_refined_when_changed():
-    client = _StubClient("diffusion models for audio generation")
+def _normalize(text: str) -> str:
+    """Normalize text for simple semantic-ish string comparisons."""
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9+#.\- ]+", " ", text)
+    return " ".join(text.split())
 
-    result = refine_search_query(
-        "difusion modles for audeo genration",
-        client,
+
+def _contains_concept(output: str, concept: str) -> bool:
+    """
+    Check whether a required concept survived refinement.
+
+    This is intentionally simple. We are not trying to build a semantic
+    evaluator; the goal is to catch obvious cases where the model drops
+    an important part of the user's query.
+    """
+    return _normalize(concept) in _normalize(output)
+
+
+def _assert_reasonable_output(original: str, refined: str) -> None:
+    """Basic sanity checks for a live model response."""
+
+    assert refined.strip(), "Model returned an empty refinement."
+
+    assert "\n" not in refined, (
+        "Refinement should be a single line, "
+        f"but got: {refined!r}"
     )
 
-    assert result.original == "difusion modles for audeo genration"
-    assert result.refined == "diffusion models for audio generation"
-    assert result.changed is True
-    assert result.error is None
-    assert len(client.calls) == 1
+    assert len(refined) >= 3
 
-
-def test_refine_search_query_marks_unchanged_when_response_matches_original():
-    client = _StubClient("diffusion models for audio")
-
-    result = refine_search_query(
-        "diffusion models for audio",
-        client,
+    assert len(refined) <= len(original) * 4, (
+        "Refinement became suspiciously long.\n"
+        f"Original: {original!r}\n"
+        f"Refined:  {refined!r}"
     )
 
-    assert result.original == "diffusion models for audio"
-    assert result.refined == "diffusion models for audio"
-    assert result.changed is False
-    assert result.error is None
-
-
-def test_refine_search_query_is_case_insensitive_for_changed_detection():
-    client = _StubClient("Diffusion Models For Audio")
-
-    result = refine_search_query(
-        "diffusion models for audio",
-        client,
+    assert not refined.startswith("```"), (
+        f"Model returned markdown instead of query text: {refined!r}"
     )
 
-    assert result.refined == "Diffusion Models For Audio"
-    assert result.changed is False
-
-
-def test_refine_search_query_strips_surrounding_quotes():
-    client = _StubClient('"diffusion models for audio"')
-
-    result = refine_search_query(
-        "diffusion models for audio",
-        client,
+    assert not refined.lower().startswith(
+        (
+            "here is",
+            "here's",
+            "corrected query",
+            "refined query",
+        )
+    ), (
+        "Model added explanatory text instead of returning only "
+        f"the query: {refined!r}"
     )
 
-    assert result.refined == "diffusion models for audio"
-    assert result.changed is False
+
+# ---------------------------------------------------------------------------
+# Live model fixture
+# ---------------------------------------------------------------------------
 
 
-def test_refine_search_query_collapses_whitespace_and_newlines():
-    client = _StubClient("diffusion   models\nfor audio")
+@pytest.fixture(scope="module")
+def client() -> OllamaClient:
+    """
+    Create the configured Ollama client once for the whole evaluation.
 
-    result = refine_search_query(
-        "diffusion models for audio typo",
-        client,
+    Prompt evaluation is opt-in because it requires a real local model.
+    """
+
+    if os.getenv("RUN_PROMPT_EVAL") != "1":
+        pytest.skip(
+            "Prompt evaluation disabled. "
+            "Set RUN_PROMPT_EVAL=1 to run against the local Ollama model."
+        )
+
+    config = load_config()
+    client = OllamaClient.from_config(config)
+
+    if not client.is_available():
+        pytest.skip(
+            "Ollama is not available. Start Ollama before running "
+            "the prompt evaluation."
+        )
+
+    verified = client.verify_configured_models()
+
+    if not all(verified.values()):
+        pytest.skip(
+            f"Configured Ollama model(s) are unavailable: {verified}"
+        )
+
+    return client
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "case",
+    CASES,
+    ids=lambda case: case["name"],
+)
+def test_query_refinement_preserves_research_intent(case, client):
+    """
+    The model may rewrite the query, but it must not silently remove
+    important concepts from the user's original request.
+    """
+
+    result = refine_search_query(case["query"], client)
+
+    assert result.refined is not None, (
+        f"Refinement failed for query: {case['query']!r}\n"
+        f"Error: {result.error}"
     )
 
-    assert result.refined == "diffusion models for audio"
+    refined = result.refined
 
+    _assert_reasonable_output(case["query"], refined)
 
-def test_refine_search_query_strips_leading_and_trailing_whitespace_from_input():
-    client = _StubClient("clean query")
+    missing = [
+        term
+        for term in case["required_terms"]
+        if not _contains_concept(refined, term)
+    ]
 
-    result = refine_search_query(
-        "  clean query  ",
-        client,
+    assert not missing, (
+        "Refinement appears to have changed the user's research intent.\n"
+        f"Original: {case['query']}\n"
+        f"Refined:  {refined}\n"
+        f"Missing concepts: {missing}"
     )
 
-    assert result.original == "clean query"
 
+@pytest.mark.parametrize(
+    "case",
+    [
+        case
+        for case in CASES
+        if "spelling" in case["expected_changes"]
+    ],
+    ids=lambda case: case["name"],
+)
+def test_query_refinement_fixes_obvious_spelling_errors(case, client):
+    """
+    Obvious misspellings should not survive when there is an obvious
+    correction.
 
-def test_refine_search_query_falls_back_when_client_returns_none():
-    client = _StubClient(None)
+    This deliberately checks only that the output differs from the
+    malformed input; it does not demand one exact final sentence.
+    """
 
-    result = refine_search_query(
-        "some query",
-        client,
+    result = refine_search_query(case["query"], client)
+
+    assert result.refined is not None
+
+    original_words = _normalize(case["query"]).split()
+    refined_words = _normalize(result.refined).split()
+
+    assert original_words != refined_words, (
+        "The model returned essentially the same malformed query.\n"
+        f"Original: {case['query']}\n"
+        f"Refined:  {result.refined}"
     )
 
-    assert result.original == "some query"
-    assert result.refined is None
-    assert result.changed is False
-    assert result.error is not None
-    assert "reach" in result.error.lower()
+
+@pytest.mark.parametrize(
+    "query,required_acronyms",
+    [
+        (
+            "llms for retrieval augmented generation",
+            ["LLM", "RAG"],
+        ),
+        (
+            "rag with llm for question answering",
+            ["RAG", "LLM"],
+        ),
+        (
+            "papers on LLM halucinations in RAG systems",
+            ["LLM", "RAG"],
+        ),
+        (
+            "LLM hallucinations in RAG systems particulary "
+            "when using small local models",
+            ["LLM", "RAG"],
+        ),
+    ],
+)
+def test_query_refinement_normalizes_common_acronyms(
+    query,
+    required_acronyms,
+    client,
+):
+    """
+    Technical acronyms should remain recognizable rather than being
+    expanded into unrelated wording or silently removed.
+
+    We accept either the acronym itself or its expanded form where
+    appropriate, but these cases intentionally prefer conventional
+    academic acronyms.
+    """
+
+    result = refine_search_query(query, client)
+
+    assert result.refined is not None
+
+    refined = result.refined
+
+    expansions = {
+        "LLM": "large language model",
+        "RAG": "retrieval augmented generation",
+    }
+
+    for acronym in required_acronyms:
+        assert (
+            acronym.lower() in refined.lower()
+            or expansions[acronym].lower() in refined.lower()
+        ), (
+            f"Acronym/concept {acronym!r} disappeared.\n"
+            f"Original: {query}\n"
+            f"Refined:  {refined}"
+        )
 
 
-def test_refine_search_query_falls_back_on_empty_response():
-    client = _StubClient("")
+def test_query_refinement_does_not_add_unrequested_research_topics(client):
+    """
+    The model should improve phrasing without turning a narrow query
+    into a much broader research question.
+    """
 
-    result = refine_search_query(
-        "some query",
-        client,
+    query = "vision transformers for image classification"
+
+    result = refine_search_query(query, client)
+
+    assert result.refined is not None
+
+    refined = result.refined.lower()
+
+    assert "vision transformer" in refined
+    assert "image" in refined
+    assert "classification" in refined
+
+    forbidden = [
+        "medical",
+        "healthcare",
+        "sentiment",
+        "reinforcement learning",
+        "robotics",
+        "audio",
+        "speech",
+        "finance",
+    ]
+
+    unexpected = [
+        term
+        for term in forbidden
+        if term in refined
+    ]
+
+    assert not unexpected, (
+        "Model introduced unrelated research topics.\n"
+        f"Original: {query}\n"
+        f"Refined:  {result.refined}\n"
+        f"Unexpected terms: {unexpected}"
     )
 
-    assert result.original == "some query"
-    assert result.refined is None
-    assert result.changed is False
-    assert result.error is not None
 
+def test_query_refinement_prompt_contains_academic_search_guidance(client):
+    """
+    Cheap prompt-regression test.
 
-def test_refine_search_query_falls_back_on_suspiciously_long_response():
-    client = _StubClient("x " * 500)
+    This does not evaluate model quality. It ensures that future prompt
+    edits do not accidentally remove the instructions that define this
+    feature.
+    """
 
-    result = refine_search_query(
-        "short query",
-        client,
+    system, user = build_query_refine_prompt(
+        "difusion models for audeo genration"
     )
 
-    assert result.original == "short query"
-    assert result.refined is None
-    assert result.changed is False
-    assert result.error is not None
-
-
-def test_refine_search_query_calls_client_once():
-    client = _StubClient("refined query")
-
-    refine_search_query(
-        "original query",
-        client,
-    )
-
-    assert len(client.calls) == 1
-
-
-def test_refine_search_query_prompt_includes_raw_query():
-    client = _StubClient("refined text")
-
-    refine_search_query(
-        "original raw query",
-        client,
-    )
-
-    prompt, system = client.calls[0]
-
-    assert "original raw query" in prompt
-
-
-def test_refine_search_query_passes_system_prompt():
-    client = _StubClient("refined text")
-
-    refine_search_query(
-        "original raw query",
-        client,
-    )
-
-    prompt, system = client.calls[0]
-
-    assert system is not None
-    assert system.strip()
-
-
-def test_refine_search_query_uses_prompt_instructions():
-    client = _StubClient("refined text")
-
-    refine_search_query(
-        "original raw query",
-        client,
-    )
-
-    prompt, system = client.calls[0]
-
-    assert system is not None
     system_lower = system.lower()
+    user_lower = user.lower()
 
     assert "spelling" in system_lower
     assert "grammar" in system_lower
+    assert "research" in system_lower
     assert "search" in system_lower
+    assert "difusion models for audeo genration" in user_lower
+
+
+# ---------------------------------------------------------------------------
+# Optional aggregate evaluation
+# ---------------------------------------------------------------------------
+
+
+def test_query_refinement_overall_success_rate(client):
+    """
+    Run the complete evaluation set and require a reasonable minimum
+    success rate.
+
+    This is intentionally a relatively forgiving threshold at first.
+    Once a baseline has been established, the threshold can be raised.
+
+    A query passes when it remains a valid, concise query and preserves
+    all required concepts. Exact wording is not required.
+    """
+
+    passed = 0
+    failures: list[str] = []
+
+    for case in CASES:
+        result = refine_search_query(case["query"], client)
+
+        if result.refined is None:
+            failures.append(
+                f"{case['name']}: refinement failed ({result.error})"
+            )
+            continue
+
+        try:
+            _assert_reasonable_output(
+                case["query"],
+                result.refined,
+            )
+
+            missing = [
+                term
+                for term in case["required_terms"]
+                if not _contains_concept(
+                    result.refined,
+                    term,
+                )
+            ]
+
+            if missing:
+                failures.append(
+                    f"{case['name']}: missing concepts "
+                    f"{missing} -> {result.refined!r}"
+                )
+                continue
+
+            passed += 1
+
+        except AssertionError as exc:
+            failures.append(
+                f"{case['name']}: {exc}"
+            )
+
+    success_rate = passed / len(CASES)
+
+    print("\n" + "=" * 70)
+    print("QUERY REFINEMENT PROMPT EVALUATION")
+    print("=" * 70)
+    print(f"Passed:      {passed}/{len(CASES)}")
+    print(f"Success:     {success_rate:.1%}")
+    print(f"Failed:      {len(failures)}")
+
+    if failures:
+        print("\nFailures:")
+        for failure in failures:
+            print(f"  - {failure}")
+
+    print("=" * 70)
+
+    assert success_rate >= 0.75, (
+        f"Query refinement success rate was only "
+        f"{success_rate:.1%}. "
+        "See the failures printed above."
+    )

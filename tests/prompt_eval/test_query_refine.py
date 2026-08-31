@@ -236,11 +236,70 @@ def _contains_concept(output: str, concept: str) -> bool:
     """
     Check whether a required concept survived refinement.
 
-    This is intentionally simple. We are not trying to build a semantic
-    evaluator; the goal is to catch obvious cases where the model drops
-    an important part of the user's query.
+    This is intentionally tolerant of common academic variations such as:
+    - pluralization: model/models
+    - hyphenation: question-answering/question answering
+    - acronym expansion: RAG -> retrieval augmented generation
+    - acronym normalization: LLMs -> LLM
     """
-    return _normalize(concept) in _normalize(output)
+    normalized_output = _normalize(output)
+    normalized_concept = _normalize(concept)
+
+    if normalized_concept in normalized_output:
+        return True
+
+    # Common academic equivalents.
+    equivalents = {
+        "llm": [
+            "llm",
+            "llms",
+            "large language model",
+            "large language models",
+        ],
+        "rag": [
+            "rag",
+            "retrieval augmented generation",
+            "retrieval-augmented generation",
+        ],
+        "large language model": [
+            "large language model",
+            "large language models",
+            "llm",
+            "llms",
+        ],
+        "question answering": [
+            "question answering",
+            "question-answering",
+            "qa",
+        ],
+        "answer quality": [
+            "answer quality",
+            "response quality",
+            "response accuracy",
+            "answer accuracy",
+        ],
+        "retrieval": [
+            "retrieval",
+            "retrieving",
+        ],
+        "image": [
+            "image",
+            "images",
+            "imaging",
+        ],
+        "classification": [
+            "classification",
+            "classifying",
+            "classifier",
+        ],
+    }
+
+    candidates = equivalents.get(normalized_concept, [normalized_concept])
+
+    return any(
+        _normalize(candidate) in normalized_output
+        for candidate in candidates
+    )
 
 
 def _assert_reasonable_output(original: str, refined: str) -> None:

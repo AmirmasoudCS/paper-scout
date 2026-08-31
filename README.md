@@ -140,12 +140,21 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 ├── 📁 assets
 │   └── 📁 screenshots
 ├── 📁 log
+├── 📁 models
 ├── 📁 outputs
+│   ├── 📁 how-can-ai-help-with-game-development_2026-08-30
+│   │   ├── 📁 pdfs
+│   │   ├── 📘 report.md
+│   │   └── 🧩 run_metadata.json
 │   ├── 📁 lstm-in-predicting-the-trading-stocks_2026-08-29
 │   │   ├── 📁 pdfs
 │   │   ├── 📘 report.md
 │   │   └── 🧩 run_metadata.json
-│   └── 📁 neural-networks-architecture-and-their-impact-on-accuracy_2026-08-29
+│   ├── 📁 neural-networks-architecture-and-their-impact-on-accuracy_2026-08-29
+│   │   ├── 📁 pdfs
+│   │   ├── 📘 report.md
+│   │   └── 🧩 run_metadata.json
+│   └── 📁 use-of-ai-in-electrical-engineering_2026-08-30
 │       ├── 📁 pdfs
 │       ├── 📘 report.md
 │       └── 🧩 run_metadata.json
@@ -158,7 +167,13 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   ├── 📁 llm
 │   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 ollama_client.py
-│   │   └── 🐍 prompts.py
+│   │   ├── 🐍 prompts.py
+│   │   └── 🐍 query_refine.py
+│   ├── 📁 qa
+│   │   ├── 🐍 __init__.py
+│   │   ├── 🐍 answer.py
+│   │   ├── 🐍 stt.py
+│   │   └── 🐍 tts.py
 │   ├── 📁 ranking
 │   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 dedupe.py
@@ -190,8 +205,11 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   │   │   └── 🎨 style.css
 │   │   ├── 📁 templates
 │   │   │   ├── 📁 partials
+│   │   │   │   ├── 🌐 ask_panel.html
 │   │   │   │   ├── 🌐 job_error.html
 │   │   │   │   ├── 🌐 progress.html
+│   │   │   │   ├── 🌐 qa_turn.html
+│   │   │   │   ├── 🌐 refine_confirm.html
 │   │   │   │   ├── 🌐 report.html
 │   │   │   │   └── 🌐 run_list.html
 │   │   │   ├── 🌐 base.html
@@ -212,14 +230,19 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   └── 🐍 smoke_test.py
 ├── 📁 tests
 │   ├── 🐍 conftest.py
+│   ├── 🐍 test_cli.py
 │   ├── 🐍 test_ingestion.py
 │   ├── 🐍 test_llm.py
 │   ├── 🐍 test_pipeline.py
+│   ├── 🐍 test_query_refine.py
 │   ├── 🐍 test_ranking.py
 │   ├── 🐍 test_report.py
 │   ├── 🐍 test_sources.py
 │   ├── 🐍 test_summarize.py
-│   └── 🐍 test_synthesize.py
+│   ├── 🐍 test_synthesize.py
+│   ├── 🐍 test_web_app.py
+│   ├── 🐍 test_web_jobs.py
+│   └── 🐍 test_web_runs.py
 ├── 📄 banner_hand_drawn.svg
 ├── 📄 config.yaml
 ├── ⚖️ LICENSE

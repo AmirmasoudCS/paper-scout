@@ -38,7 +38,6 @@ import pytest
 from paper_scout.llm.ollama_client import OllamaClient
 from paper_scout.llm.prompts import build_query_refine_prompt
 from paper_scout.utils.config import load_config
-from paper_scout.llm.query_refine import refine_search_query
 
 
 # ---------------------------------------------------------------------------

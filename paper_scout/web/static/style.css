@@ -724,7 +724,7 @@ p.body-text strong { color: var(--ink); font-weight: 600; }
 /* ── Three-column layout with the ask panel ──────────────────────── */
 
 .app {
-  grid-template-columns: 300px 1fr 460px;
+  grid-template-columns: 300px 1fr 560px;
 }
 
 .main:only-child {

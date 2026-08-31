@@ -863,9 +863,8 @@ p.body-text strong { color: var(--ink); font-weight: 600; }
   to { transform: rotate(360deg); }
 }
 
-@keyframes qa-thinking-pulse {
-  0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); }
-  30% { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  .qa-spinner { animation: none; border-top-color: var(--hairline); }
 }
 
 .qa-audio-player {

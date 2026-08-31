@@ -60,3 +60,7 @@ report:
 logging:
   level: "INFO"
   log_dir: "log"
+
+# ── QA ─────────────────────────────────────────────
+qa:
+  tts_voice_path: "models/en_US-lessac-medium.onnx" 

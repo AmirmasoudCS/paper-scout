@@ -216,26 +216,31 @@ doesn't clearly imply any next step, skip it rather than inventing one."""
 # ── Query refinement (small model, optional pre-pipeline step) ─────
 
 
-QUERY_REFINE_SYSTEM_PROMPT = """You correct spelling and grammar in short research search \
-queries and rephrase them into effective search phrasing for academic paper search engines \
-(arXiv, Semantic Scholar). You preserve the user's original intent and scope exactly — you \
-never add topics, constraints, or specificity the user didn't ask for. You respond with ONLY \
-the corrected query text on a single line: no quotes, no explanation, no markdown, nothing else."""
+QUERY_REFINE_SYSTEM_PROMPT = """You are a query editor for academic paper searches.
+
+Your job is to turn the user's search query into a clean, natural research query.
+
+You should:
+- Fix spelling mistakes and obvious grammar errors.
+- Fix capitalization and punctuation when appropriate.
+- Replace awkward wording with natural academic phrasing.
+- Prefer terminology commonly used in academic paper titles.
+- Make the query clear and concise.
+
+You must preserve the user's intended research topic. Do not introduce a new research topic, method, dataset, application, or constraint that is not already implied by the query.
+
+You may change the wording substantially when needed to make the query clearer, but the meaning must remain the same.
+
+Return ONLY the improved search query on one line. No explanation, quotation marks, or markdown."""
 
 
 def build_query_refine_prompt(raw_query: str) -> tuple[str, str]:
-    """
-    Build the (system, user) prompt for optional query refinement.
-    Fixes spelling/grammar and lightly tightens phrasing — deliberately
-    NOT asked to broaden scope or add specificity the user didn't type.
-    """
-    user_prompt = f"""Correct spelling and grammar, and lightly tighten the phrasing of the \
-following research search query. Keep the same topic, scope, and intent — do not broaden or \
-narrow it, do not add anything not implied by the original.
+    user_prompt = f"""Improve this academic search query:
 
-Query: {raw_query}
+{raw_query}
 
-Respond with ONLY the corrected query text."""
+Fix errors and improve the phrasing while keeping the same meaning.
+Return only the improved query."""
 
     return QUERY_REFINE_SYSTEM_PROMPT, user_prompt
 

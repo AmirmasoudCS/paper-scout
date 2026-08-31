@@ -42,9 +42,16 @@ You run one command or one click and get one folder. No intermediate prompts, no
 
 - Python 3.12
 - [Ollama](https://ollama.com) installed and running locally
-- Two pulled models: a small one for summarization and a larger one for synthesis (configurable, see below)
+- Two pulled Ollama models: a small one for per-paper summarization and a larger one for cross-paper synthesis and ideation (configurable in `config.yaml`)
 - Roughly 32GB RAM recommended for comfortable CPU offload of the larger model
-- [GTK3 runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) (Windows only) for PDF report generation via WeasyPrint. Not needed on macOS/Linux, where the required libraries are typically already present or installable via the system package manager.
+- [FFmpeg](https://ffmpeg.org/) installed and available on your system `PATH` for voice input and audio processing
+- A Piper TTS voice model for spoken answers. By default, `config.yaml` expects:
+  ```yaml
+  qa:
+    tts_voice_path: "models/en_US-lessac-medium.onnx"
+  ```
+  Place the corresponding `en_US-lessac-medium.onnx` voice model inside the `models/` directory, or change `tts_voice_path` to the location of another compatible Piper voice model.
+  - [GTK3 runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) (Windows only) for PDF report generation via WeasyPrint. Not needed on macOS/Linux, where the required libraries are typically already present or installable via the system package manager.
 
 ## 🛠️ Setup
 

@@ -45,7 +45,7 @@ You run one command or one click and get one folder. No intermediate prompts, no
 - By default, `config.yaml` expects the following Ollama models:
   - `qwen3.5:9b`: small model used for per-paper summarization
   - `gemma4:e4b`: larger model used for cross-paper synthesis and future-work ideation </br>
-  You can change the model names, temperatures, token limits, and timeout in `config.yaml`:
+  You can change the model names, temperatures, token limits, and timeout in `config.yaml`: </br>
 
   ```yaml
   llm:

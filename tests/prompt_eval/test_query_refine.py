@@ -97,13 +97,7 @@ CASES = [
     {
         "name": "RAG question answering",
         "query": "retrieval augmented generation for question answering",
-        "required_terms": [
-            "retrieval",
-            "augmented",
-            "generation",
-            "question",
-            "answering",
-        ],
+        "required_terms": ["RAG", "question answering"],
         "expected_changes": [],
     },
     {

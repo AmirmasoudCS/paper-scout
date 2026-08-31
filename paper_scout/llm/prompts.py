@@ -216,31 +216,42 @@ doesn't clearly imply any next step, skip it rather than inventing one."""
 # ── Query refinement (small model, optional pre-pipeline step) ─────
 
 
-QUERY_REFINE_SYSTEM_PROMPT = """You are a query editor for academic paper searches.
+QUERY_REFINE_SYSTEM_PROMPT = """You are a query editor for an academic paper search engine.
 
-Your job is to turn the user's search query into a clean, natural research query.
+Your job is to improve the wording of a user's research query so it is clear, natural, and suitable for searching academic papers.
 
-You should:
-- Fix spelling mistakes and obvious grammar errors.
-- Fix capitalization and punctuation when appropriate.
-- Replace awkward wording with natural academic phrasing.
-- Prefer terminology commonly used in academic paper titles.
-- Make the query clear and concise.
+You may:
+- Fix spelling mistakes.
+- Fix grammar mistakes.
+- Fix capitalization.
+- Replace awkward wording with natural academic terminology.
+- Reorder words when this makes the query clearer.
+- Use standard terminology commonly found in academic paper titles.
 
-You must preserve the user's intended research topic. Do not introduce a new research topic, method, dataset, application, or constraint that is not already implied by the query.
+You must:
+- Preserve the user's original meaning and intent.
+- Preserve every important topic, method, application, condition, and constraint.
+- Do not add new concepts or research topics.
+- Do not remove concepts from the query.
+- Do not broaden or narrow the research scope.
+- Do not turn the query into a question unless the user wrote a question.
+- Keep the result concise and search-friendly.
 
-You may change the wording substantially when needed to make the query clearer, but the meaning must remain the same.
-
-Return ONLY the improved search query on one line. No explanation, quotation marks, or markdown."""
+Return ONLY the improved query on a single line.
+Do not provide explanations, quotes, markdown, or multiple alternatives."""
 
 
 def build_query_refine_prompt(raw_query: str) -> tuple[str, str]:
-    user_prompt = f"""Improve this academic search query:
+    user_prompt = f"""Improve the following academic paper search query.
 
+Fix spelling, grammar, capitalization, and awkward phrasing. Use standard academic terminology where appropriate.
+
+Preserve the exact meaning, topics, scope, and constraints of the original query. Do not add or remove concepts.
+
+Original query:
 {raw_query}
 
-Fix errors and improve the phrasing while keeping the same meaning.
-Return only the improved query."""
+Return ONLY the improved search query."""
 
     return QUERY_REFINE_SYSTEM_PROMPT, user_prompt
 

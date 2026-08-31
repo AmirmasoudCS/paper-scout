@@ -826,3 +826,108 @@ p.body-text strong { color: var(--ink); font-weight: 600; }
     display: none;
   }
 }
+
+/* ── Q&A: thinking indicator + custom audio player ───────────────── */
+
+.qa-pending {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+}
+
+.qa-thinking {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.qa-thinking span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brass);
+  animation: qa-thinking-pulse 1.2s ease-in-out infinite;
+}
+
+.qa-thinking span:nth-child(2) { animation-delay: 0.2s; }
+.qa-thinking span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes qa-thinking-pulse {
+  0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); }
+  30% { opacity: 1; transform: scale(1); }
+}
+
+.qa-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+.qa-audio-playpause {
+  background: var(--brass);
+  color: #1a1a14;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.qa-audio-playpause:hover { background: #DAB53B; }
+
+.qa-audio-seek {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--hairline);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.qa-audio-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--brass);
+  cursor: pointer;
+  margin-top: -4px;
+}
+
+.qa-audio-seek::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--brass);
+  border: none;
+  cursor: pointer;
+}
+
+.qa-audio-seek::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--hairline);
+  border-radius: 2px;
+}
+
+.qa-audio-time {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

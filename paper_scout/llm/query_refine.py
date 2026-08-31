@@ -1,200 +1,142 @@
 """
-Unit tests for paper_scout.llm.query_refine.
+paper_scout.llm.query_refine
 
-These tests mock the OllamaClient.generate_small call directly.
-They test the Python behavior around query refinement, not the quality
-of the refinement prompt itself.
+Optional pre-pipeline step: uses the small model to fix spelling and
+lightly tighten a user's raw search query before it is sent to the
+paper sources.
 
-Prompt quality is evaluated separately in:
-    tests/prompt_eval/test_query_refine.py
+The refinement is intentionally conservative: it should improve
+spelling, grammar, capitalization, and academic phrasing while
+preserving the user's original research intent.
+
+Degrades gracefully like the rest of the project: on any failure
+(unreachable Ollama, empty/garbage response), returns the ORIGINAL
+query with refined=None and a human-readable error rather than
+raising or guessing at a fix.
 """
 
 from __future__ import annotations
 
-from paper_scout.llm.query_refine import refine_search_query
+import logging
+from dataclasses import dataclass
+from typing import Optional
+
+from paper_scout.llm.ollama_client import OllamaClient
+from paper_scout.llm.prompts import build_query_refine_prompt
 
 
-class _StubClient:
-    """Minimal stand-in for OllamaClient.generate_small."""
-
-    def __init__(self, response: str | None):
-        self._response = response
-        self.calls: list[tuple[str, str | None]] = []
-
-    def generate_small(self, prompt, system=None):
-        self.calls.append((prompt, system))
-        return self._response
+logger = logging.getLogger(__name__)
 
 
-def test_refine_search_query_returns_refined_when_changed():
-    client = _StubClient("diffusion models for audio generation")
+# If the model's response is wildly longer than the input, or empty,
+# it is more likely to be a broken/garbage response than a useful
+# refinement.
+_MAX_REFINED_LENGTH_RATIO = 4
+_MIN_REFINED_CHARS = 3
 
-    result = refine_search_query(
-        "difusion modles for audeo genration",
-        client,
+
+@dataclass
+class QueryRefinement:
+    original: str
+    refined: Optional[str]
+    changed: bool
+    error: Optional[str] = None
+
+
+def refine_search_query(
+    raw_query: str,
+    client: OllamaClient,
+) -> QueryRefinement:
+    """
+    Ask the small model to improve a raw research search query.
+
+    The model is allowed to correct:
+    - spelling
+    - grammar
+    - capitalization
+    - awkward phrasing
+    - common academic terminology
+
+    It should preserve:
+    - the original research topic
+    - important technical terms
+    - acronyms
+    - requested constraints
+    - the overall scope of the query
+
+    Never raises. If refinement fails or produces an obviously
+    unreliable response, the caller can fall back to the original
+    query.
+    """
+
+    raw_query = raw_query.strip()
+
+    system, user = build_query_refine_prompt(raw_query)
+
+    try:
+        result = client.generate_small(user, system=system)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Query refinement failed for %r", raw_query)
+
+        return QueryRefinement(
+            original=raw_query,
+            refined=None,
+            changed=False,
+            error=f"Could not refine the query: {exc}",
+        )
+
+    if result is None:
+        logger.warning(
+            "Query refinement failed (no response) for %r",
+            raw_query,
+        )
+
+        return QueryRefinement(
+            original=raw_query,
+            refined=None,
+            changed=False,
+            error="Could not reach the small model to refine the query.",
+        )
+
+    # Defensively clean up common formatting mistakes from the model.
+    refined = result.strip()
+
+    # Remove surrounding quotes if the model ignored the instruction
+    # and returned something like:
+    # "diffusion models for audio generation"
+    if (
+        len(refined) >= 2
+        and refined[0] == refined[-1]
+        and refined[0] in {"'", '"'}
+    ):
+        refined = refined[1:-1].strip()
+
+    # Force the result onto a single line.
+    refined = " ".join(refined.split())
+
+    # Basic reliability checks.
+    if (
+        len(refined) < _MIN_REFINED_CHARS
+        or len(refined) > len(raw_query) * _MAX_REFINED_LENGTH_RATIO
+    ):
+        logger.warning(
+            "Query refinement response looked unreliable for %r -> %r",
+            raw_query,
+            refined,
+        )
+
+        return QueryRefinement(
+            original=raw_query,
+            refined=None,
+            changed=False,
+            error=(
+                "The model's response didn't look reliable, "
+                "so your original query was kept."
+            ),
+        )
+
+    return QueryRefinement(
+        original=raw_query,
+        refined=refined,
+        changed=refined.lower() != raw_query.lower(),
     )
-
-    assert result.original == "difusion modles for audeo genration"
-    assert result.refined == "diffusion models for audio generation"
-    assert result.changed is True
-    assert result.error is None
-    assert len(client.calls) == 1
-
-
-def test_refine_search_query_marks_unchanged_when_response_matches_original():
-    client = _StubClient("diffusion models for audio")
-
-    result = refine_search_query(
-        "diffusion models for audio",
-        client,
-    )
-
-    assert result.original == "diffusion models for audio"
-    assert result.refined == "diffusion models for audio"
-    assert result.changed is False
-    assert result.error is None
-
-
-def test_refine_search_query_is_case_insensitive_for_changed_detection():
-    client = _StubClient("Diffusion Models For Audio")
-
-    result = refine_search_query(
-        "diffusion models for audio",
-        client,
-    )
-
-    assert result.refined == "Diffusion Models For Audio"
-    assert result.changed is False
-
-
-def test_refine_search_query_strips_surrounding_quotes():
-    client = _StubClient('"diffusion models for audio"')
-
-    result = refine_search_query(
-        "diffusion models for audio",
-        client,
-    )
-
-    assert result.refined == "diffusion models for audio"
-    assert result.changed is False
-
-
-def test_refine_search_query_collapses_whitespace_and_newlines():
-    client = _StubClient("diffusion   models\nfor audio")
-
-    result = refine_search_query(
-        "diffusion models for audio typo",
-        client,
-    )
-
-    assert result.refined == "diffusion models for audio"
-
-
-def test_refine_search_query_strips_leading_and_trailing_whitespace_from_input():
-    client = _StubClient("clean query")
-
-    result = refine_search_query(
-        "  clean query  ",
-        client,
-    )
-
-    assert result.original == "clean query"
-
-
-def test_refine_search_query_falls_back_when_client_returns_none():
-    client = _StubClient(None)
-
-    result = refine_search_query(
-        "some query",
-        client,
-    )
-
-    assert result.original == "some query"
-    assert result.refined is None
-    assert result.changed is False
-    assert result.error is not None
-    assert "reach" in result.error.lower()
-
-
-def test_refine_search_query_falls_back_on_empty_response():
-    client = _StubClient("")
-
-    result = refine_search_query(
-        "some query",
-        client,
-    )
-
-    assert result.original == "some query"
-    assert result.refined is None
-    assert result.changed is False
-    assert result.error is not None
-
-
-def test_refine_search_query_falls_back_on_suspiciously_long_response():
-    client = _StubClient("x " * 500)
-
-    result = refine_search_query(
-        "short query",
-        client,
-    )
-
-    assert result.original == "short query"
-    assert result.refined is None
-    assert result.changed is False
-    assert result.error is not None
-
-
-def test_refine_search_query_calls_client_once():
-    client = _StubClient("refined query")
-
-    refine_search_query(
-        "original query",
-        client,
-    )
-
-    assert len(client.calls) == 1
-
-
-def test_refine_search_query_prompt_includes_raw_query():
-    client = _StubClient("refined text")
-
-    refine_search_query(
-        "original raw query",
-        client,
-    )
-
-    prompt, system = client.calls[0]
-
-    assert "original raw query" in prompt
-
-
-def test_refine_search_query_passes_system_prompt():
-    client = _StubClient("refined text")
-
-    refine_search_query(
-        "original raw query",
-        client,
-    )
-
-    prompt, system = client.calls[0]
-
-    assert system is not None
-    assert system.strip()
-
-
-def test_refine_search_query_uses_prompt_instructions():
-    client = _StubClient("refined text")
-
-    refine_search_query(
-        "original raw query",
-        client,
-    )
-
-    prompt, system = client.calls[0]
-
-    assert system is not None
-    system_lower = system.lower()
-
-    assert "spelling" in system_lower
-    assert "grammar" in system_lower
-    assert "search" in system_lower

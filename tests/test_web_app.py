@@ -113,14 +113,28 @@ def test_create_run_rejects_empty_query(client):
 
 
 def test_create_run_starts_job_and_returns_progress_view(client, monkeypatch):
-    monkeypatch.setattr(app_module, "start_job", lambda query, config: "job123")
     monkeypatch.setattr(
-        app_module, "get_job", lambda job_id: JobState(job_id="job123", query="my topic")
+        app_module,
+        "start_job",
+        lambda *args, **kwargs: "job123",
     )
+
+    monkeypatch.setattr(
+        app_module,
+        "get_job",
+        lambda job_id: JobState(job_id="job123", query="my topic")
+    )
+
     monkeypatch.setattr(
         app_module,
         "stage_progress",
-        lambda job: [{"key": "fetch_sources", "label": "Fetching sources", "status": "current"}],
+        lambda job: [
+            {
+                "key": "fetch_sources",
+                "label": "Fetching sources",
+                "status": "current",
+            }
+        ],
     )
 
     response = client.post("/runs", data={"query": "my topic"})

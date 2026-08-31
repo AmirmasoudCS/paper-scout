@@ -1,0 +1,82 @@
+<aside class="ask-panel">
+  <div class="ask-panel-header">
+    <div class="eyebrow">Ask about this report</div>
+    <label class="checkbox-row" style="margin-top: 8px;">
+      <input type="checkbox" id="speakToggle" checked>
+      Speak answers aloud
+    </label>
+  </div>
+
+  <div class="qa-thread" id="qa-thread"></div>
+
+  <form
+    id="askForm"
+    hx-post="/runs/{{ run.run_id }}/ask"
+    hx-target="#qa-thread"
+    hx-swap="beforeend"
+    hx-on::after-request="this.reset(); document.getElementById('qa-thread').scrollTop = document.getElementById('qa-thread').scrollHeight;"
+  >
+    <input type="hidden" name="speak" id="speakHidden" value="1">
+    <div class="ask-input-row">
+      <input
+        type="text"
+        name="question"
+        id="questionInput"
+        placeholder="Ask a question about this report..."
+        autocomplete="off"
+      >
+      <button type="button" id="micBtn" class="btn" title="Ask by voice">Mic</button>
+      <button type="submit" class="btn btn-primary">Ask</button>
+    </div>
+  </form>
+</aside>
+
+<script>
+(function () {
+  const speakToggle = document.getElementById('speakToggle');
+  const speakHidden = document.getElementById('speakHidden');
+  speakToggle.addEventListener('change', () => {
+    speakHidden.value = speakToggle.checked ? '1' : '';
+  });
+
+  const micBtn = document.getElementById('micBtn');
+  const thread = document.getElementById('qa-thread');
+  let mediaRecorder = null;
+  let chunks = [];
+  let recording = false;
+
+  micBtn.addEventListener('click', async () => {
+    if (!recording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        chunks = [];
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const formData = new FormData();
+          formData.append('audio', blob, 'question.webm');
+          formData.append('speak', speakHidden.value);
+
+          const response = await fetch('/runs/{{ run.run_id }}/ask', {
+            method: 'POST',
+            body: formData,
+          });
+          const html = await response.text();
+          thread.insertAdjacentHTML('beforeend', html);
+          thread.scrollTop = thread.scrollHeight;
+          micBtn.textContent = 'Mic';
+        };
+        mediaRecorder.start();
+        recording = true;
+        micBtn.textContent = 'Stop';
+      } catch (err) {
+        alert('Microphone access failed: ' + err);
+      }
+    } else {
+      mediaRecorder.stop();
+      recording = false;
+    }
+  });
+})();
+</script>

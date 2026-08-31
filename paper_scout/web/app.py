@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import re
 
+from fastapi.responses import JSONResponse
+
 from paper_scout.llm.ollama_client import OllamaClient
 from paper_scout.llm.query_refine import refine_search_query
 
@@ -266,7 +268,7 @@ def run_list_partial(request: Request):
         request, "partials/run_list.html", {"runs": runs, "selected_run_id": None}
     )
 
-@app.post("/runs/{run_id}/ask", response_class=HTMLResponse)
+@app.post("/runs/{run_id}/ask")
 async def ask_report(
     request: Request,
     run_id: str,
@@ -276,27 +278,20 @@ async def ask_report(
 ):
     report_markdown = get_run_report_markdown(_output_dir(), run_id)
     if report_markdown is None:
-        return HTMLResponse("<p class='qa-error'>Report not found.</p>", status_code=404)
+        return JSONResponse({"error": "Report not found."}, status_code=404)
 
     if audio is not None and audio.filename:
         audio_bytes = await audio.read()
         transcribed = transcribe_audio(audio_bytes)
         if transcribed is None:
-            return templates.TemplateResponse(
-                request,
-                "partials/qa_turn.html",
-                {
-                    "question": None,
-                    "answer": None,
-                    "audio_b64": None,
-                    "error": "Could not transcribe your question — please try again or type it instead.",
-                },
+            return JSONResponse(
+                {"error": "Could not transcribe your question — please try again or type it instead."}
             )
         question = transcribed
 
     question = question.strip()
     if not question:
-        return HTMLResponse("<p class='qa-error'>Please ask a question.</p>", status_code=400)
+        return JSONResponse({"error": "Please ask a question."}, status_code=400)
 
     config = load_config()
     client = OllamaClient.from_config(config)
@@ -310,8 +305,4 @@ async def ask_report(
             if audio_bytes_out:
                 audio_b64 = base64.b64encode(audio_bytes_out).decode("ascii")
 
-    return templates.TemplateResponse(
-        request,
-        "partials/qa_turn.html",
-        {"question": question, "answer": answer, "audio_b64": audio_b64, "error": None},
-    )
+    return JSONResponse({"question": question, "answer": answer, "audio_b64": audio_b64, "error": None})

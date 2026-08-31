@@ -116,15 +116,13 @@ def test_create_run_starts_job_and_returns_progress_view(client, monkeypatch):
     monkeypatch.setattr(
         app_module,
         "start_job",
-        lambda *args, **kwargs: "job123",
+        lambda query, config, original_query=None: "job123",
     )
-
     monkeypatch.setattr(
         app_module,
         "get_job",
-        lambda job_id: JobState(job_id="job123", query="my topic")
+        lambda job_id: JobState(job_id="job123", query="my topic"),
     )
-
     monkeypatch.setattr(
         app_module,
         "stage_progress",
@@ -144,11 +142,13 @@ def test_create_run_starts_job_and_returns_progress_view(client, monkeypatch):
     assert "Fetching sources" in response.text
 
 
-def test_create_run_returns_409_when_a_run_is_already_in_progress(client, monkeypatch):
+def test_create_run_returns_409_when_a_run_is_already_in_progress(
+    client, monkeypatch
+):
     monkeypatch.setattr(
         app_module,
         "start_job",
-        lambda *args, **kwargs: None,
+        lambda query, config, original_query=None: None,
     )
 
     response = client.post("/runs", data={"query": "another topic"})

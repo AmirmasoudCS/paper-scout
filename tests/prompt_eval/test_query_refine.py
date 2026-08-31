@@ -220,9 +220,17 @@ CASES = [
 
 
 def _normalize(text: str) -> str:
-    """Normalize text for simple semantic-ish string comparisons."""
+    """Normalize text for semantic-ish string comparisons."""
     text = text.lower()
-    text = re.sub(r"[^a-z0-9+#.\- ]+", " ", text)
+
+    # Treat common academic punctuation as whitespace so that:
+    # "retrieval-augmented generation"
+    # matches
+    # "retrieval augmented generation"
+    text = re.sub(r"[-_/]", " ", text)
+
+    text = re.sub(r"[^a-z0-9+#. ]+", " ", text)
+
     return " ".join(text.split())
 
 

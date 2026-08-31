@@ -3,15 +3,24 @@
 
 <div class="app">
 
+  <!-- =========================================================
+       LEFT: Sidebar / Previous Runs
+       ========================================================= -->
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-mark">Local Research Assistant</div>
       <div class="brand-title">paper-scout</div>
     </div>
 
-    <button class="new-run-btn" onclick="document.getElementById('modalOverlay').classList.add('open')">New search</button>
+    <button
+      class="new-run-btn"
+      onclick="document.getElementById('modalOverlay').classList.add('open')"
+    >
+      New search
+    </button>
 
     <div class="drawer-label">Past runs</div>
+
     <div
       class="run-list"
       id="run-list"
@@ -23,44 +32,151 @@
     </div>
   </aside>
 
+
+  <!-- =========================================================
+       CENTER: Report
+       ========================================================= -->
   <div id="report-pane">
-    {% include "partials/report.html" %}
+
+    {% if run %}
+      {% include "partials/report.html" %}
+    {% else %}
+      <main class="main">
+        <div class="report-header">
+          <div class="eyebrow">paper-scout</div>
+          <h1 class="report-title">No runs yet</h1>
+          <p class="body-text">
+            Start a new search from the sidebar to generate your first report.
+          </p>
+        </div>
+      </main>
+    {% endif %}
+
   </div>
-  {% if run %}
-    {% include "partials/ask_panel.html" %}
-  {% endif %}
+
+
+  <!-- =========================================================
+       RIGHT: Assistant
+       ========================================================= -->
+  <div
+    id="ask-pane"
+    data-run-id="{{ run.run_id if run else '' }}"
+  >
+    {% if run %}
+      {% include "partials/ask_panel.html" %}
+    {% endif %}
+  </div>
 
 </div>
 
+
+<!-- =========================================================
+     NEW SEARCH MODAL
+     ========================================================= -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
+
     <div class="modal-eyebrow">New search</div>
+
     <h3>What should paper-scout look into?</h3>
 
     <form
       hx-post="/runs"
       hx-target="#report-pane"
       hx-swap="innerHTML"
-      hx-on::after-request="document.getElementById('modalOverlay').classList.remove('open'); this.reset();"
+      hx-on::after-request="
+        document.getElementById('modalOverlay').classList.remove('open');
+        this.reset();
+      "
     >
+
       <div class="field-group">
         <label for="queryInput">Research topic</label>
-        <input type="text" id="queryInput" name="query" placeholder="e.g. sparse attention for long-context transformers" autofocus required>
+
+        <input
+          type="text"
+          id="queryInput"
+          name="query"
+          placeholder="e.g. sparse attention for long-context transformers"
+          autofocus
+          required
+        >
       </div>
+
 
       <div class="field-group" style="margin-bottom: 10px;">
         <label class="checkbox-row" style="margin-bottom: 0;">
-          <input type="checkbox" name="refine" value="1">
+
+          <input
+            type="checkbox"
+            name="refine"
+            value="1"
+          >
+
           Improve my search query (fix typos, tighten phrasing)
+
         </label>
       </div>
 
+
       <div class="modal-actions">
-        <button type="button" class="btn" onclick="document.getElementById('modalOverlay').classList.remove('open')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Start search</button>
+
+        <button
+          type="button"
+          class="btn"
+          onclick="document.getElementById('modalOverlay').classList.remove('open')"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+        >
+          Start search
+        </button>
+
       </div>
+
     </form>
+
   </div>
 </div>
+
+
+<!-- =========================================================
+     RUN SELECTION / ASSISTANT CONTEXT
+     ========================================================= -->
+<script>
+document.addEventListener("click", function (event) {
+
+  const runCard = event.target.closest(".run-card");
+
+  if (!runCard) {
+    return;
+  }
+
+  const runId = runCard.dataset.runId;
+
+  if (!runId) {
+    return;
+  }
+
+  const askPane = document.getElementById("ask-pane");
+
+  if (!askPane) {
+    return;
+  }
+
+  /*
+   * Store the currently selected report.
+   *
+   * The assistant will use this value when sending
+   * /runs/{run_id}/ask.
+   */
+  askPane.dataset.runId = runId;
+
+});
+</script>
 
 {% endblock %}

@@ -182,22 +182,6 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 ├── 📁 log
 ├── 📁 models
 ├── 📁 outputs
-│   ├── 📁 how-can-ai-help-with-game-development_2026-08-30
-│   │   ├── 📁 pdfs
-│   │   ├── 📘 report.md
-│   │   └── 🧩 run_metadata.json
-│   ├── 📁 lstm-in-predicting-the-trading-stocks_2026-08-29
-│   │   ├── 📁 pdfs
-│   │   ├── 📘 report.md
-│   │   └── 🧩 run_metadata.json
-│   ├── 📁 neural-networks-architecture-and-their-impact-on-accuracy_2026-08-29
-│   │   ├── 📁 pdfs
-│   │   ├── 📘 report.md
-│   │   └── 🧩 run_metadata.json
-│   └── 📁 use-of-ai-in-electrical-engineering_2026-08-30
-│       ├── 📁 pdfs
-│       ├── 📘 report.md
-│       └── 🧩 run_metadata.json
 ├── 📁 paper_scout
 │   ├── 📁 ingestion
 │   │   ├── 🐍 __init__.py
@@ -253,8 +237,7 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   │   │   │   ├── 🌐 report.html
 │   │   │   │   └── 🌐 run_list.html
 │   │   │   ├── 🌐 base.html
-│   │   │   ├── 🌐 index.html
-│   │   │   └── 🌐 new_run_modal.html
+│   │   │   └── 🌐 index.html
 │   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 app.py
 │   │   ├── 🐍 jobs.py
@@ -269,6 +252,8 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   ├── 🐍 recheck_extraction.py
 │   └── 🐍 smoke_test.py
 ├── 📁 tests
+│   ├── 📁 prompt_eval
+│   │   └── 🐍 test_query_refine.py
 │   ├── 🐍 conftest.py
 │   ├── 🐍 test_cli.py
 │   ├── 🐍 test_ingestion.py

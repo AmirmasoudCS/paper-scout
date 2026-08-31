@@ -3,11 +3,15 @@
   const panel = document.querySelector('.ask-panel');
   if (!panel) return;
 
-  const RUN_ID = panel.dataset.runId;
+  function getCurrentRunId() {
+    const runId = panel.dataset.runId;
 
-  if (!RUN_ID) {
-    console.error('paper-scout: no run ID found for assistant panel');
-    return;
+    if (!runId) {
+      console.error('paper-scout: no run ID found for assistant panel');
+      return null;
+    }
+
+    return runId;
   }
 
   const thread = panel.querySelector('#qa-thread');

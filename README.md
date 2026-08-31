@@ -25,6 +25,7 @@ Give it a query like `"diffusion models for audio"` and it will:
    - **Grounded** directions, traceable to what the papers themselves state in their Limitations/Future Work sections
    - **Inferred** directions, for papers with no extractable Limitations/Future Work section, reasoned from the paper's problem, method, and key result instead. These are always explicitly tagged `[Inferred, not author-stated]` so they are never mistaken for grounded ones
 7. Write everything to a self contained per run output folder: a markdown report, a PDF version of the same report, the metadata of the run, and the downloaded PDFs for every paper in the run
+8. Ask questions about the generated report through the built-in assistant, with support for both text and voice interaction
 
 You run one command or one click and get one folder. No intermediate prompts, no manual steps in between.
 
@@ -35,6 +36,7 @@ You run one command or one click and get one folder. No intermediate prompts, no
 - **Column aware extraction.** Two column academic PDFs are read using PyMuPDF's block level layout data rather than plain top to bottom text extraction, so column text isn't interleaved and heading lines survive intact.
 - **Graceful degradation.** Every source, every paper, and every pipeline stage is built to fail without taking the rest of the run down with it. A blocked source, a failed download, or a missing section all fall back to a sensible default instead of raising.
 - **Self contained run folders.** Each run gets its own folder under `outputs/` containing the report and every PDF used to produce it, with no shared cross run cache.
+- **Report assistant.** Completed reports can be queried through an integrated question-answering assistant. Questions can be entered as text or spoken through the microphone, and answers can optionally be spoken aloud.
 
 ## ⚙️ Requirements
 
@@ -104,6 +106,16 @@ Once a run finishes, the report is rendered directly in the browser, including t
 <p align="center">
   <img src="assets/screenshots/future_work.png" width="49%">
   <img src="assets/screenshots/future_work_inferred.png" width="49%">
+</p>
+
+### 🎙️ Report Assistant
+
+Once a run is finished, you can ask questions about the generated report through the built-in assistant.
+
+The assistant supports both text and voice interaction. Questions can be entered directly or spoken through the microphone, and answers can optionally be spoken aloud.
+
+<p align="center">
+    <img src="assets/screenshots/assistant_panel.png" width="90%">
 </p>
 
 Both the command line and the web interface run the exact same pipeline and write to the same `outputs/` folder, so a run started from one can be opened from the other.
@@ -268,6 +280,7 @@ Tests marked `ollama` or `network` require a running local Ollama server or live
 - Future work ideation is two tiered. The grounded tier will refuse to run rather than fall back to ungrounded brainstorming if none of the papers have extractable Limitations or Future Work text. The inferred tier picks up the papers the grounded tier cannot use, reasoning only from each paper's problem, method, and key result summary, and is always rendered in its own clearly labeled report section, never blended with the grounded output.
 - The web interface shows live, stage by stage progress for a running query and lets you browse every past run from the same place. Both the CLI and the web interface call the same pipeline underneath.
 - Query history search and comparing runs against each other are planned as future additions but are not part of the current scope.
+- **Report assistant.** Completed reports can be explored through the built-in assistant using text or voice input. Answers can also be spoken aloud when voice output is enabled.
 
 ## ⚖️ License
 

@@ -229,3 +229,6 @@ outputs/pdf_cache
 
 # Debug
 tmp_debug_run
+
+# Models
+models/*

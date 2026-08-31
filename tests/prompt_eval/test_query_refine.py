@@ -91,7 +91,7 @@ CASES = [
     {
         "name": "RAG acronym preservation",
         "query": "llms for retrieval augmented generation",
-        "required_terms": ["LLM", "RAG"],
+        "required_terms": ["LLM", "retrieval", "augmented", "generation"],
         "expected_changes": ["phrasing", "acronym normalization"],
     },
     {

@@ -42,10 +42,11 @@
   }
 
   function getCurrentRunId() {
-    const runId = askPane.dataset.runId;
+    const askPane = document.getElementById('ask-pane');
+    const runId = askPane ? askPane.dataset.runId : null;
 
     if (!runId) {
-      console.error('paper-scout: no run ID found for assistant');
+      console.error('paper-scout: no run ID found for assistant panel');
       return null;
     }
 

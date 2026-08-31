@@ -42,10 +42,31 @@ You run one command or one click and get one folder. No intermediate prompts, no
 
 - Python 3.12
 - [Ollama](https://ollama.com) installed and running locally
-- Two pulled Ollama models: a small one for per-paper summarization and a larger one for cross-paper synthesis and ideation (configurable in `config.yaml`)
+- By default, `config.yaml` expects the following Ollama models:
+  - `qwen3.5:9b`: small model used for per-paper summarization
+  - `gemma4:e4b`: larger model used for cross-paper synthesis and future-work ideation
+You can change the model names, temperatures, token limits, and timeout in `config.yaml`:
+ 
+ ```yaml
+  llm:
+    provider: "ollama"
+
+    small_model:
+      name: "qwen3.5:9b"
+      temperature: 0.3
+      max_tokens: 512
+
+    large_model:
+      name: "gemma4:e4b"
+      temperature: 0.5
+      max_tokens: 1500
+
+    timeout_seconds: 120
+  ```
 - Roughly 32GB RAM recommended for comfortable CPU offload of the larger model
 - [FFmpeg](https://ffmpeg.org/) installed and available on your system `PATH` for voice input and audio processing
 - A Piper TTS voice model for spoken answers. By default, `config.yaml` expects:
+  
   ```yaml
   qa:
     tts_voice_path: "models/en_US-lessac-medium.onnx"

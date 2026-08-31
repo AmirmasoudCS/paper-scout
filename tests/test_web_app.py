@@ -145,7 +145,11 @@ def test_create_run_starts_job_and_returns_progress_view(client, monkeypatch):
 
 
 def test_create_run_returns_409_when_a_run_is_already_in_progress(client, monkeypatch):
-    monkeypatch.setattr(app_module, "start_job", lambda query, config: None)
+    monkeypatch.setattr(
+        app_module,
+        "start_job",
+        lambda *args, **kwargs: None,
+    )
 
     response = client.post("/runs", data={"query": "another topic"})
 

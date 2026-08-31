@@ -36,20 +36,24 @@ _DEFAULT_SYN_CONFIG = SynthesisConfig(length_scale=1.15)  # >1.0 = slower, 1.0 =
 
 _MD_BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
 _MD_ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.*?)\*(?!\*)")
+_MD_BULLET_RE = re.compile(r"^[ \t]*[*\-+][ \t]+", re.MULTILINE)
+_STRAY_ASTERISK_RE = re.compile(r"\*+")
 _CITATION_RE = re.compile(r"\s*\[\d+(?:,\s*\d+)*\]")
 _MULTI_SPACE_RE = re.compile(r" {2,}")
 _SENTENCE_END_RE = re.compile(r"([.!?])\s+")
 
 
 def _clean_text_for_speech(text: str) -> str:
-    """Strips markdown emphasis and citation brackets before synthesis
-    — Piper reads raw markup literally (e.g. "asterisk asterisk"), and
-    citation numbers like [3] add no value spoken aloud."""
+    """Strips markdown emphasis, list bullets, and citation brackets
+    before synthesis — Piper reads raw markup literally (e.g. "asterisk
+    asterisk"), and citation numbers like [3] add no value spoken aloud."""
     text = _CITATION_RE.sub("", text)
+    text = _MD_BULLET_RE.sub("", text)  # leading "* " / "- " list markers
     text = _MD_BOLD_RE.sub(r"\1", text)
     text = _MD_ITALIC_RE.sub(r"\1", text)
+    text = _STRAY_ASTERISK_RE.sub("", text)  # safety net: anything unpaired/missed
     text = _MULTI_SPACE_RE.sub(" ", text)
-    text = _SENTENCE_END_RE.sub(r"\1\n", text)  # extra pause at sentence boundaries
+    text = _SENTENCE_END_RE.sub(r"\1\n", text)
     return text.strip()
 
 def _get_voice(voice_path: str):

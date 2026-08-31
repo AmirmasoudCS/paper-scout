@@ -818,6 +818,15 @@ p.body-text strong { color: var(--ink); font-weight: 600; }
   padding: 9px 12px;
 }
 
+@media (max-width: 1150px) {
+  .app {
+    grid-template-columns: 300px 1fr;
+  }
+  .ask-panel {
+    display: none;
+  }
+}
+
 /* ── Q&A: thinking indicator + custom audio player ───────────────── */
 
 .qa-pending {

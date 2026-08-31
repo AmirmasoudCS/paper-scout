@@ -837,21 +837,31 @@ p.body-text strong { color: var(--ink); font-weight: 600; }
 
 .qa-thinking {
   display: flex;
-  gap: 4px;
   align-items: center;
+  gap: 10px;
   padding: 4px 0;
 }
 
-.qa-thinking span {
-  width: 6px;
-  height: 6px;
+.qa-spinner {
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--brass);
-  animation: qa-thinking-pulse 1.2s ease-in-out infinite;
+  border: 2px solid var(--hairline);
+  border-top-color: var(--brass);
+  animation: qa-spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
-.qa-thinking span:nth-child(2) { animation-delay: 0.2s; }
-.qa-thinking span:nth-child(3) { animation-delay: 0.4s; }
+.qa-thinking-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+@keyframes qa-spin {
+  to { transform: rotate(360deg); }
+}
 
 @keyframes qa-thinking-pulse {
   0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); }

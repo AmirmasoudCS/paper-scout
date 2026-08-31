@@ -1,6 +1,7 @@
-<aside class="ask-panel">
+<aside class="ask-panel" data-run-id="{{ run.run_id }}">
   <div class="ask-panel-header">
     <div class="eyebrow">Ask about this report</div>
+
     <label class="checkbox-row" style="margin-top: 8px;">
       <input type="checkbox" id="speakToggle" checked>
       Speak answers aloud
@@ -17,20 +18,30 @@
         placeholder="Ask a question about this report..."
         autocomplete="off"
       >
-      <button type="button" id="micBtn" class="btn" title="Ask by voice">Mic</button>
-      <button type="submit" class="btn btn-primary">Ask</button>
+
+      <button type="button" id="micBtn" class="btn" title="Ask by voice">
+        Mic
+      </button>
+
+      <button type="submit" class="btn btn-primary">
+        Ask
+      </button>
     </div>
   </form>
 </aside>
 
 <script>
 (function () {
-  const RUN_ID = "{{ run.run_id }}";
-  const thread = document.getElementById('qa-thread');
-  const speakToggle = document.getElementById('speakToggle');
-  const askForm = document.getElementById('askForm');
-  const questionInput = document.getElementById('questionInput');
-  const micBtn = document.getElementById('micBtn');
+  const panel = document.querySelector('.ask-panel');
+  if (!panel) return;
+
+  const RUN_ID = panel.dataset.runId;
+
+  const thread = panel.querySelector('#qa-thread');
+  const speakToggle = panel.querySelector('#speakToggle');
+  const askForm = panel.querySelector('#askForm');
+  const questionInput = panel.querySelector('#questionInput');
+  const micBtn = panel.querySelector('#micBtn');
 
   function scrollThreadToBottom() {
     thread.scrollTop = thread.scrollHeight;
@@ -43,29 +54,46 @@
   }
 
   function addPendingTurn(questionText) {
-    const id = 'qa-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+    const id =
+      'qa-' +
+      Date.now() +
+      '-' +
+      Math.random().toString(36).slice(2, 7);
+
     const el = document.createElement('div');
+
     el.className = 'qa-turn';
     el.id = id;
+
     el.innerHTML = `
       <div class="qa-question">
         <span class="qa-role">You</span>
         <p>${escapeHtml(questionText)}</p>
       </div>
+
       <div class="qa-answer qa-pending">
         <span class="qa-role">paper-scout</span>
-        <div class="qa-thinking"><div class="qa-spinner"></div><span class="qa-thinking-label">Thinking...</span></div>
+        <div class="qa-thinking">
+          <div class="qa-spinner"></div>
+          <span class="qa-thinking-label">Thinking...</span>
+        </div>
       </div>
     `;
+
     thread.appendChild(el);
     scrollThreadToBottom();
+
     return id;
   }
 
   function fmtTime(sec) {
     if (!isFinite(sec)) return '0:00';
+
     const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    const s = Math.floor(sec % 60)
+      .toString()
+      .padStart(2, '0');
+
     return `${m}:${s}`;
   }
 
@@ -73,7 +101,9 @@
     const wrapper = document.createElement('div');
     wrapper.className = 'qa-audio-player';
 
-    const audio = new Audio('data:audio/wav;base64,' + audioB64);
+    const audio = new Audio(
+      'data:audio/wav;base64,' + audioB64
+    );
 
     const playBtn = document.createElement('button');
     playBtn.type = 'button';
@@ -103,9 +133,12 @@
 
     audio.addEventListener('timeupdate', () => {
       if (audio.duration) {
-        seek.value = String((audio.currentTime / audio.duration) * 100);
+        seek.value =
+          String((audio.currentTime / audio.duration) * 100);
       }
-      time.textContent = `${fmtTime(audio.currentTime)} / ${fmtTime(audio.duration)}`;
+
+      time.textContent =
+        `${fmtTime(audio.currentTime)} / ${fmtTime(audio.duration)}`;
     });
 
     audio.addEventListener('ended', () => {
@@ -114,71 +147,124 @@
     });
 
     audio.addEventListener('loadedmetadata', () => {
-      time.textContent = `${fmtTime(0)} / ${fmtTime(audio.duration)}`;
+      time.textContent =
+        `${fmtTime(0)} / ${fmtTime(audio.duration)}`;
     });
 
     seek.addEventListener('input', () => {
       if (audio.duration) {
-        audio.currentTime = (Number(seek.value) / 100) * audio.duration;
+        audio.currentTime =
+          (Number(seek.value) / 100) * audio.duration;
       }
     });
 
     wrapper.appendChild(playBtn);
     wrapper.appendChild(seek);
     wrapper.appendChild(time);
+
     return wrapper;
   }
 
   function resolveTurn(id, data) {
     const el = document.getElementById(id);
+
     if (!el) return;
 
     if (data.error) {
-      el.innerHTML = `<p class="qa-error">${escapeHtml(data.error)}</p>`;
+      el.innerHTML =
+        `<p class="qa-error">${escapeHtml(data.error)}</p>`;
+
       scrollThreadToBottom();
       return;
     }
 
-    const questionEl = el.querySelector('.qa-question p');
-    if (questionEl) questionEl.textContent = data.question;
+    const questionEl =
+      el.querySelector('.qa-question p');
 
-    const answerEl = el.querySelector('.qa-answer');
+    if (questionEl) {
+      questionEl.textContent = data.question;
+    }
+
+    const answerEl =
+      el.querySelector('.qa-answer');
+
     answerEl.classList.remove('qa-pending');
-    answerEl.innerHTML = `<span class="qa-role">paper-scout</span><p>${escapeHtml(data.answer)}</p>`;
+
+    answerEl.innerHTML =
+      `<span class="qa-role">paper-scout</span>
+       <p>${escapeHtml(data.answer)}</p>`;
 
     if (data.audio_b64) {
-      answerEl.appendChild(buildAudioPlayer(data.audio_b64));
+      answerEl.appendChild(
+        buildAudioPlayer(data.audio_b64)
+      );
     }
 
     scrollThreadToBottom();
   }
 
   async function askQuestion({ questionText, audioBlob }) {
-    const pendingId = addPendingTurn(audioBlob ? 'Listening...' : questionText);
+    const pendingId = addPendingTurn(
+      audioBlob ? 'Listening...' : questionText
+    );
 
     const formData = new FormData();
+
     if (audioBlob) {
-      formData.append('audio', audioBlob, 'question.webm');
+      formData.append(
+        'audio',
+        audioBlob,
+        'question.webm'
+      );
     } else {
-      formData.append('question', questionText);
+      formData.append(
+        'question',
+        questionText
+      );
     }
-    formData.append('speak', speakToggle.checked ? '1' : '');
+
+    formData.append(
+      'speak',
+      speakToggle.checked ? '1' : ''
+    );
 
     try {
-      const response = await fetch(`/runs/${RUN_ID}/ask`, { method: 'POST', body: formData });
+      const response = await fetch(
+        `/runs/${RUN_ID}/ask`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+
       const data = await response.json();
+
       resolveTurn(pendingId, data);
+
     } catch (err) {
-      resolveTurn(pendingId, { error: 'Something went wrong asking that question.' });
+      resolveTurn(
+        pendingId,
+        {
+          error:
+            'Something went wrong asking that question.'
+        }
+      );
     }
   }
 
   askForm.addEventListener('submit', (e) => {
     e.preventDefault();
+
     const text = questionInput.value.trim();
+
     if (!text) return;
+
     questionInput.value = '';
-    askQuestion({ questionText: text, audioBlob: null });
+
+    askQuestion({
+      questionText: text,
+      audioBlob: null
+    });
   });
 
   let mediaRecorder = null;
@@ -186,27 +272,62 @@
   let recording = false;
 
   micBtn.addEventListener('click', async () => {
+
     if (!recording) {
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        const stream =
+          await navigator.mediaDevices.getUserMedia({
+            audio: true
+          });
+
+        mediaRecorder =
+          new MediaRecorder(stream);
+
         chunks = [];
-        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+
+        mediaRecorder.ondataavailable =
+          (e) => chunks.push(e.data);
+
         mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'audio/webm' });
-          askQuestion({ questionText: null, audioBlob: blob });
+
+          const blob =
+            new Blob(
+              chunks,
+              { type: 'audio/webm' }
+            );
+
+          askQuestion({
+            questionText: null,
+            audioBlob: blob
+          });
+
+          stream
+            .getTracks()
+            .forEach(track => track.stop());
+
           micBtn.textContent = 'Mic';
         };
+
         mediaRecorder.start();
+
         recording = true;
         micBtn.textContent = 'Stop';
+
       } catch (err) {
-        alert('Microphone access failed: ' + err);
+
+        alert(
+          'Microphone access failed: ' +
+          err
+        );
       }
+
     } else {
+
       mediaRecorder.stop();
       recording = false;
     }
   });
+
 })();
 </script>

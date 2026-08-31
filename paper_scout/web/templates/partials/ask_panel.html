@@ -9,18 +9,10 @@
 
   <div class="qa-thread" id="qa-thread"></div>
 
-  <form
-    id="askForm"
-    hx-post="/runs/{{ run.run_id }}/ask"
-    hx-target="#qa-thread"
-    hx-swap="beforeend"
-    hx-on::after-request="this.reset(); document.getElementById('qa-thread').scrollTop = document.getElementById('qa-thread').scrollHeight;"
-  >
-    <input type="hidden" name="speak" id="speakHidden" value="1">
+  <form id="askForm">
     <div class="ask-input-row">
       <input
         type="text"
-        name="question"
         id="questionInput"
         placeholder="Ask a question about this report..."
         autocomplete="off"
@@ -33,14 +25,162 @@
 
 <script>
 (function () {
+  const RUN_ID = "{{ run.run_id }}";
+  const thread = document.getElementById('qa-thread');
   const speakToggle = document.getElementById('speakToggle');
-  const speakHidden = document.getElementById('speakHidden');
-  speakToggle.addEventListener('change', () => {
-    speakHidden.value = speakToggle.checked ? '1' : '';
+  const askForm = document.getElementById('askForm');
+  const questionInput = document.getElementById('questionInput');
+  const micBtn = document.getElementById('micBtn');
+
+  function scrollThreadToBottom() {
+    thread.scrollTop = thread.scrollHeight;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function addPendingTurn(questionText) {
+    const id = 'qa-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+    const el = document.createElement('div');
+    el.className = 'qa-turn';
+    el.id = id;
+    el.innerHTML = `
+      <div class="qa-question">
+        <span class="qa-role">You</span>
+        <p>${escapeHtml(questionText)}</p>
+      </div>
+      <div class="qa-answer qa-pending">
+        <span class="qa-role">paper-scout</span>
+        <div class="qa-thinking"><span></span><span></span><span></span></div>
+      </div>
+    `;
+    thread.appendChild(el);
+    scrollThreadToBottom();
+    return id;
+  }
+
+  function fmtTime(sec) {
+    if (!isFinite(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function buildAudioPlayer(audioB64) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'qa-audio-player';
+
+    const audio = new Audio('data:audio/wav;base64,' + audioB64);
+
+    const playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'qa-audio-playpause';
+    playBtn.textContent = '\u25B6';
+
+    const seek = document.createElement('input');
+    seek.type = 'range';
+    seek.className = 'qa-audio-seek';
+    seek.min = '0';
+    seek.max = '100';
+    seek.value = '0';
+
+    const time = document.createElement('span');
+    time.className = 'qa-audio-time';
+    time.textContent = '0:00 / 0:00';
+
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        audio.play();
+        playBtn.textContent = '\u23F8';
+      } else {
+        audio.pause();
+        playBtn.textContent = '\u25B6';
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) {
+        seek.value = String((audio.currentTime / audio.duration) * 100);
+      }
+      time.textContent = `${fmtTime(audio.currentTime)} / ${fmtTime(audio.duration)}`;
+    });
+
+    audio.addEventListener('ended', () => {
+      playBtn.textContent = '\u25B6';
+      seek.value = '0';
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      time.textContent = `${fmtTime(0)} / ${fmtTime(audio.duration)}`;
+    });
+
+    seek.addEventListener('input', () => {
+      if (audio.duration) {
+        audio.currentTime = (Number(seek.value) / 100) * audio.duration;
+      }
+    });
+
+    wrapper.appendChild(playBtn);
+    wrapper.appendChild(seek);
+    wrapper.appendChild(time);
+    return wrapper;
+  }
+
+  function resolveTurn(id, data) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (data.error) {
+      el.innerHTML = `<p class="qa-error">${escapeHtml(data.error)}</p>`;
+      scrollThreadToBottom();
+      return;
+    }
+
+    const questionEl = el.querySelector('.qa-question p');
+    if (questionEl) questionEl.textContent = data.question;
+
+    const answerEl = el.querySelector('.qa-answer');
+    answerEl.classList.remove('qa-pending');
+    answerEl.innerHTML = `<span class="qa-role">paper-scout</span><p>${escapeHtml(data.answer)}</p>`;
+
+    if (data.audio_b64) {
+      answerEl.appendChild(buildAudioPlayer(data.audio_b64));
+    }
+
+    scrollThreadToBottom();
+  }
+
+  async function askQuestion({ questionText, audioBlob }) {
+    const pendingId = addPendingTurn(audioBlob ? 'Listening...' : questionText);
+
+    const formData = new FormData();
+    if (audioBlob) {
+      formData.append('audio', audioBlob, 'question.webm');
+    } else {
+      formData.append('question', questionText);
+    }
+    formData.append('speak', speakToggle.checked ? '1' : '');
+
+    try {
+      const response = await fetch(`/runs/${RUN_ID}/ask`, { method: 'POST', body: formData });
+      const data = await response.json();
+      resolveTurn(pendingId, data);
+    } catch (err) {
+      resolveTurn(pendingId, { error: 'Something went wrong asking that question.' });
+    }
+  }
+
+  askForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = questionInput.value.trim();
+    if (!text) return;
+    questionInput.value = '';
+    askQuestion({ questionText: text, audioBlob: null });
   });
 
-  const micBtn = document.getElementById('micBtn');
-  const thread = document.getElementById('qa-thread');
   let mediaRecorder = null;
   let chunks = [];
   let recording = false;
@@ -52,19 +192,9 @@
         mediaRecorder = new MediaRecorder(stream);
         chunks = [];
         mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-        mediaRecorder.onstop = async () => {
+        mediaRecorder.onstop = () => {
           const blob = new Blob(chunks, { type: 'audio/webm' });
-          const formData = new FormData();
-          formData.append('audio', blob, 'question.webm');
-          formData.append('speak', speakHidden.value);
-
-          const response = await fetch('/runs/{{ run.run_id }}/ask', {
-            method: 'POST',
-            body: formData,
-          });
-          const html = await response.text();
-          thread.insertAdjacentHTML('beforeend', html);
-          thread.scrollTop = thread.scrollHeight;
+          askQuestion({ questionText: null, audioBlob: blob });
           micBtn.textContent = 'Mic';
         };
         mediaRecorder.start();

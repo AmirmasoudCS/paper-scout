@@ -1,0 +1,17 @@
+<div class="qa-turn">
+  {% if error %}
+    <p class="qa-error">{{ error }}</p>
+  {% else %}
+    <div class="qa-question">
+      <span class="qa-role">You</span>
+      <p>{{ question }}</p>
+    </div>
+    <div class="qa-answer">
+      <span class="qa-role">paper-scout</span>
+      <p>{{ answer }}</p>
+      {% if audio_b64 %}
+        <audio controls autoplay src="data:audio/wav;base64,{{ audio_b64 }}"></audio>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

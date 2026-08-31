@@ -38,6 +38,7 @@ _MD_BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
 _MD_ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.*?)\*(?!\*)")
 _CITATION_RE = re.compile(r"\s*\[\d+(?:,\s*\d+)*\]")
 _MULTI_SPACE_RE = re.compile(r" {2,}")
+_SENTENCE_END_RE = re.compile(r"([.!?])\s+")
 
 
 def _clean_text_for_speech(text: str) -> str:
@@ -48,6 +49,7 @@ def _clean_text_for_speech(text: str) -> str:
     text = _MD_BOLD_RE.sub(r"\1", text)
     text = _MD_ITALIC_RE.sub(r"\1", text)
     text = _MULTI_SPACE_RE.sub(" ", text)
+    text = _SENTENCE_END_RE.sub(r"\1\n", text)  # extra pause at sentence boundaries
     return text.strip()
 
 def _get_voice(voice_path: str):

@@ -21,6 +21,13 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import base64
+from fastapi import UploadFile, File
+
+from paper_scout.qa.answer import answer_question
+from paper_scout.qa.stt import transcribe_audio
+from paper_scout.qa.tts import synthesize_speech
+
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -257,4 +264,54 @@ def run_list_partial(request: Request):
     runs = list_runs(_output_dir())
     return templates.TemplateResponse(
         request, "partials/run_list.html", {"runs": runs, "selected_run_id": None}
+    )
+
+@app.post("/runs/{run_id}/ask", response_class=HTMLResponse)
+async def ask_report(
+    request: Request,
+    run_id: str,
+    question: str = Form(""),
+    audio: Optional[UploadFile] = File(None),
+    speak: Optional[str] = Form(None),
+):
+    report_markdown = get_run_report_markdown(_output_dir(), run_id)
+    if report_markdown is None:
+        return HTMLResponse("<p class='qa-error'>Report not found.</p>", status_code=404)
+
+    if audio is not None and audio.filename:
+        audio_bytes = await audio.read()
+        transcribed = transcribe_audio(audio_bytes)
+        if transcribed is None:
+            return templates.TemplateResponse(
+                request,
+                "partials/qa_turn.html",
+                {
+                    "question": None,
+                    "answer": None,
+                    "audio_b64": None,
+                    "error": "Could not transcribe your question — please try again or type it instead.",
+                },
+            )
+        question = transcribed
+
+    question = question.strip()
+    if not question:
+        return HTMLResponse("<p class='qa-error'>Please ask a question.</p>", status_code=400)
+
+    config = load_config()
+    client = OllamaClient.from_config(config)
+    answer = answer_question(report_markdown, question, client)
+
+    audio_b64 = None
+    if speak:
+        voice_path = config.get("qa", {}).get("tts_voice_path")
+        if voice_path:
+            audio_bytes_out = synthesize_speech(answer, voice_path)
+            if audio_bytes_out:
+                audio_b64 = base64.b64encode(audio_bytes_out).decode("ascii")
+
+    return templates.TemplateResponse(
+        request,
+        "partials/qa_turn.html",
+        {"question": question, "answer": answer, "audio_b64": audio_b64, "error": None},
     )

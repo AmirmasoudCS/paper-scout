@@ -124,7 +124,7 @@
     const playBtn = document.createElement('button');
     playBtn.type = 'button';
     playBtn.className = 'qa-audio-playpause';
-    playBtn.textContent = '\u25B6';
+    playBtn.textContent = '\u23F8';
 
     const seek = document.createElement('input');
     seek.type = 'range';
@@ -177,6 +177,26 @@
     wrapper.appendChild(playBtn);
     wrapper.appendChild(seek);
     wrapper.appendChild(time);
+
+    /*
+    * Automatically start speaking the answer.
+    *
+    * The audio is created from the base64 response returned
+    * by the backend, so playback can begin as soon as the
+    * model response arrives.
+    */
+    audio.play()
+      .then(() => {
+        playBtn.textContent = '\u23F8';
+      })
+      .catch((err) => {
+        console.warn(
+          'paper-scout: automatic audio playback was blocked by the browser.',
+          err
+        );
+
+        playBtn.textContent = '\u25B6';
+      });
 
     return wrapper;
   }

@@ -1,39 +1,74 @@
-<div class="report-header">
-  <div class="eyebrow">
-    {% if refinement_failed %}Refinement unavailable{% else %}Refine your search{% endif %}
-  </div>
-  <h1 class="report-title">{{ original_query }}</h1>
-</div>
+<div class="main">
+  <div class="report-header">
+    <div class="eyebrow">
+      {% if refinement_failed %}
+        Refinement unavailable
+      {% else %}
+        Refine your search
+      {% endif %}
+    </div>
 
-{% if refinement_failed %}
-  <p class="body-text" style="color: var(--inferred);">
-    Could not refine the query{% if refinement_error %}: {{ refinement_error }}{% endif %}.
-    You can still search with your original text below, or edit it.
-  </p>
-{% elif changed %}
-  <p class="body-text">
-    Here is a cleaned-up version of your query. Edit it if you like, or start the search as-is.
-  </p>
-{% else %}
-  <p class="body-text">Your query already looked good, nothing to change.</p>
-{% endif %}
-
-<form hx-post="/runs" hx-target="#report-pane" hx-swap="innerHTML">
-  <input type="hidden" name="original_query" value="{{ original_query }}">
-
-  <div class="field-group" style="max-width: 480px;">
-    <label for="confirmQueryInput">Search query</label>
-    <input type="text" id="confirmQueryInput" name="query" value="{{ suggested_query }}" required>
+    <h1 class="report-title">{{ original_query }}</h1>
   </div>
 
-  <div class="modal-actions" style="justify-content: flex-start;">
-    <button
-      type="button"
-      class="btn"
-      onclick="document.getElementById('modalOverlay').classList.add('open')"
+  {% if refinement_failed %}
+    <p class="body-text" style="color: var(--inferred);">
+      Could not refine the query{% if refinement_error %}: {{ refinement_error }}{% endif %}.
+      You can still search with your original text below, or edit it.
+    </p>
+  {% elif changed %}
+    <p class="body-text">
+      Here is a cleaned-up version of your query.
+      Edit it if you like, or start the search as-is.
+    </p>
+  {% else %}
+    <p class="body-text">
+      Your query already looked good, nothing to change.
+    </p>
+  {% endif %}
+
+  <form
+    hx-post="/runs"
+    hx-target="#report-pane"
+    hx-swap="innerHTML"
+  >
+    <input
+      type="hidden"
+      name="original_query"
+      value="{{ original_query }}"
     >
-      Edit from scratch
-    </button>
-    <button type="submit" class="btn btn-primary">Start search</button>
-  </div>
-</form>
+
+    <div class="field-group" style="max-width: 480px;">
+      <label for="confirmQueryInput">Search query</label>
+
+      <input
+        type="text"
+        id="confirmQueryInput"
+        name="query"
+        value="{{ suggested_query }}"
+        required
+        autofocus
+      >
+    </div>
+
+    <div
+      class="modal-actions"
+      style="justify-content: flex-start;"
+    >
+      <button
+        type="button"
+        class="btn"
+        onclick="document.getElementById('modalOverlay').classList.add('open')"
+      >
+        Edit from scratch
+      </button>
+
+      <button
+        type="submit"
+        class="btn btn-primary"
+      >
+        Start search
+      </button>
+    </div>
+  </form>
+</div>

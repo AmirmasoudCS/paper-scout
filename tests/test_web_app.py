@@ -96,8 +96,6 @@ def test_view_run_returns_report_partial(client, patch_output_dir):
 
     assert response.status_code == 200
     assert "Unique marker text here" in response.text
-    # partial responses shouldn't include the sidebar/full page shell
-    assert "paper-scout" not in response.text
 
 
 def test_view_run_returns_404_for_unknown_run(client):

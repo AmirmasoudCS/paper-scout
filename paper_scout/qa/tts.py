@@ -5,11 +5,12 @@ Local text-to-speech via Piper, used to speak Q&A answers aloud.
 Requires a downloaded Piper voice model (a .onnx file plus its .json
 config) — set its path in config.yaml under qa.tts_voice_path.
 
-NOTE: written against the common PiperVoice.load()/voice.synthesize()
-API surface, but not verified against a live install as part of this
-change — run a quick smoke test after installing piper-tts, and adjust
-_get_voice()/synthesize_speech() if your installed version's API
-differs.
+Uses PiperVoice.synthesize_wav(), which writes a properly-configured
+WAV file (sets channels/sample width/frame rate from the first audio
+chunk automatically) — confirmed against the installed piper-tts
+source. voice.synthesize() alone is a generator yielding raw audio
+chunks with no WAV header, calling it directly against a bare
+wave.Wave_write raises "# channels not specified".
 
 Degrades gracefully: returns None on any failure (missing voice model,
 Piper not installed, synthesis error) rather than raising — the answer
@@ -52,7 +53,7 @@ def synthesize_speech(text: str, voice_path: str) -> Optional[bytes]:
 
         buffer = io.BytesIO()
         with wave.open(buffer, "wb") as wav_file:
-            voice.synthesize(text, wav_file)
+            voice.synthesize_wav(text, wav_file)
 
         return buffer.getvalue()
 

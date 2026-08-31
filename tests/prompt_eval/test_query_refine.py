@@ -473,16 +473,15 @@ def test_query_refinement_normalizes_common_acronyms(
     Technical acronyms should remain recognizable rather than being
     expanded into unrelated wording or silently removed.
 
-    We accept either the acronym itself or its expanded form where
-    appropriate, but these cases intentionally prefer conventional
-    academic acronyms.
+    We accept either the acronym itself or its expanded form,
+    allowing normal academic punctuation such as hyphens.
     """
 
     result = refine_search_query(query, client)
 
     assert result.refined is not None
 
-    refined = result.refined
+    refined = _normalize(result.refined)
 
     expansions = {
         "LLM": "large language model",
@@ -490,13 +489,15 @@ def test_query_refinement_normalizes_common_acronyms(
     }
 
     for acronym in required_acronyms:
+        normalized_expansion = _normalize(expansions[acronym])
+
         assert (
-            acronym.lower() in refined.lower()
-            or expansions[acronym].lower() in refined.lower()
+            acronym.lower() in refined
+            or normalized_expansion in refined
         ), (
             f"Acronym/concept {acronym!r} disappeared.\n"
             f"Original: {query}\n"
-            f"Refined:  {refined}"
+            f"Refined:  {result.refined}"
         )
 
 

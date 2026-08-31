@@ -72,7 +72,7 @@ You run one command or one click and get one folder. No intermediate prompts, no
     tts_voice_path: "models/en_US-lessac-medium.onnx"
   ```
   Place the corresponding `en_US-lessac-medium.onnx` voice model inside the `models/` directory, or change `tts_voice_path` to the location of another compatible Piper voice model.
-  - [GTK3 runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) (Windows only) for PDF report generation via WeasyPrint. Not needed on macOS/Linux, where the required libraries are typically already present or installable via the system package manager.
+- [GTK3 runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) (Windows only) for PDF report generation via WeasyPrint. Not needed on macOS/Linux, where the required libraries are typically already present or installable via the system package manager.
 
 ## 🛠️ Setup
 

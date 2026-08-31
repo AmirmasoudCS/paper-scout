@@ -238,3 +238,34 @@ Query: {raw_query}
 Respond with ONLY the corrected query text."""
 
     return QUERY_REFINE_SYSTEM_PROMPT, user_prompt
+
+# ── Report Q&A (large model, single-report grounded) ───────────────
+
+
+QA_SYSTEM_PROMPT = """You answer questions about ONE specific research report, using ONLY the \
+report text provided to you. You never use outside knowledge, and you never guess. If the \
+report does not contain information to answer the question, say plainly that the report does \
+not cover that, rather than speculating or answering from general knowledge. Keep answers \
+concise and directly grounded in the report's own wording."""
+
+_MAX_REPORT_CHARS_IN_QA_PROMPT = 12000
+
+
+def build_qa_prompt(report_markdown: str, question: str) -> tuple[str, str]:
+    """
+    Build the (system, user) prompt for report Q&A. The whole report is
+    passed as context — a single report is small enough that chunking/
+    retrieval would be over-engineering for this use case.
+    """
+    report_text = report_markdown.strip()
+    if len(report_text) > _MAX_REPORT_CHARS_IN_QA_PROMPT:
+        report_text = report_text[:_MAX_REPORT_CHARS_IN_QA_PROMPT].rstrip() + "\n\n[...truncated]"
+
+    user_prompt = f"""Report:
+{report_text}
+
+Question: {question}
+
+Answer using ONLY the report above. If the answer isn't in the report, say so directly."""
+
+    return QA_SYSTEM_PROMPT, user_prompt

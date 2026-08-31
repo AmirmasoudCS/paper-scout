@@ -232,3 +232,6 @@ tmp_debug_run
 
 # Models
 models/*
+
+# Voice Waves
+test_tone.wav

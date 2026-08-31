@@ -23,11 +23,14 @@ import io
 import logging
 import wave
 from typing import Optional
+from piper.config import SynthesisConfig
+
 
 logger = logging.getLogger(__name__)
 
 _voice = None
 _voice_path_loaded: Optional[str] = None
+_DEFAULT_SYN_CONFIG = SynthesisConfig(length_scale=1.15)  # >1.0 = slower, 1.0 = default pace
 
 
 def _get_voice(voice_path: str):
@@ -42,8 +45,6 @@ def _get_voice(voice_path: str):
 
 
 def synthesize_speech(text: str, voice_path: str) -> Optional[bytes]:
-    """Synthesizes text to WAV bytes using the Piper voice at
-    voice_path. Returns None on any failure."""
     text = text.strip()
     if not text:
         return None
@@ -53,10 +54,10 @@ def synthesize_speech(text: str, voice_path: str) -> Optional[bytes]:
 
         buffer = io.BytesIO()
         with wave.open(buffer, "wb") as wav_file:
-            voice.synthesize_wav(text, wav_file)
+            voice.synthesize_wav(text, wav_file, syn_config=_DEFAULT_SYN_CONFIG)
 
         return buffer.getvalue()
 
-    except Exception as exc:  # noqa: BLE001 — audio is a bonus, never block the answer on it
+    except Exception as exc:  # noqa: BLE001
         logger.warning("Text-to-speech failed: %s", exc)
         return None

@@ -216,43 +216,60 @@ doesn't clearly imply any next step, skip it rather than inventing one."""
 # ── Query refinement (small model, optional pre-pipeline step) ─────
 
 
-QUERY_REFINE_SYSTEM_PROMPT = """You are a query editor for an academic paper search engine.
+QUERY_REFINE_SYSTEM_PROMPT = """You improve short research queries for academic paper search.
 
-Your job is to improve the wording of a user's research query so it is clear, natural, and suitable for searching academic papers.
+Your job is to make the user's query cleaner, clearer, and more useful for finding relevant
+academic papers.
 
-You may:
-- Fix spelling mistakes.
-- Fix grammar mistakes.
-- Fix capitalization.
-- Replace awkward wording with natural academic terminology.
-- Reorder words when this makes the query clearer.
-- Use standard terminology commonly found in academic paper titles.
+You MAY:
+- fix spelling mistakes and typos
+- fix grammar
+- improve awkward or unnatural phrasing
+- normalize capitalization
+- preserve standard capitalization of technical acronyms such as LLM, RAG, CNN, NLP, ViT
+- use conventional academic terminology when it is an obvious correction
+- turn a conversational question into a concise academic search phrase when this preserves
+  the same meaning
 
-You must:
-- Preserve the user's original meaning and intent.
-- Preserve every important topic, method, application, condition, and constraint.
-- Do not add new concepts or research topics.
-- Do not remove concepts from the query.
-- Do not broaden or narrow the research scope.
-- Do not turn the query into a question unless the user wrote a question.
-- Keep the result concise and search-friendly.
+You MUST:
+- preserve the user's original research topic and intent
+- preserve important technical concepts, entities, methods, and constraints
+- keep the query approximately the same scope
+- remain concise
+- return only the improved search query
 
-Return ONLY the improved query on a single line.
-Do not provide explanations, quotes, markdown, or multiple alternatives."""
+You MUST NOT:
+- add a new research topic
+- invent a method, dataset, application, or constraint
+- broaden the research question
+- narrow the research question
+- answer the question
+- explain your changes
+
+Examples:
+
+Input:  difusion modles for audeo genration
+Output: diffusion models for audio generation
+
+Input:  rag with llm for question answering
+Output: RAG with LLMs for question answering
+
+Input:  what is the impact of federated learning on privacy in healthcare?
+Output: federated learning and privacy in healthcare
+
+Input:  DEEP LERNING FOR MEDICAL IMAGE ANALISIS
+Output: deep learning for medical image analysis
+
+Return ONLY the improved query on one line."""
 
 
 def build_query_refine_prompt(raw_query: str) -> tuple[str, str]:
-    user_prompt = f"""Improve the following academic paper search query.
+    user_prompt = f"""Improve this academic paper search query:
 
-Fix spelling, grammar, capitalization, and awkward phrasing. Use standard academic terminology where appropriate.
-
-Preserve the exact meaning, topics, scope, and constraints of the original query. Do not add or remove concepts.
-
-Original query:
 {raw_query}
 
-Return ONLY the improved search query."""
-
+Return ONLY the improved query."""
+    
     return QUERY_REFINE_SYSTEM_PROMPT, user_prompt
 
 # ── Report Q&A (large model, single-report grounded) ───────────────

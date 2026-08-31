@@ -181,6 +181,12 @@
   }
 
   async function askQuestion({ questionText, audioBlob }) {
+    const runId = getCurrentRunId();
+
+    if (!runId) {
+      return;
+    }
+
     const pendingId = addPendingTurn(
       audioBlob ? 'Listening...' : questionText
     );

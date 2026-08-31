@@ -1,41 +1,14 @@
-<aside class="ask-panel" data-run-id="{{ run.run_id }}">
-  <div class="ask-panel-header">
-    <div class="eyebrow">Ask about this report</div>
-
-    <label class="checkbox-row" style="margin-top: 8px;">
-      <input type="checkbox" id="speakToggle" checked>
-      Speak answers aloud
-    </label>
-  </div>
-
-  <div class="qa-thread" id="qa-thread"></div>
-
-  <form id="askForm">
-    <div class="ask-input-row">
-      <input
-        type="text"
-        id="questionInput"
-        placeholder="Ask a question about this report..."
-        autocomplete="off"
-      >
-
-      <button type="button" id="micBtn" class="btn" title="Ask by voice">
-        Mic
-      </button>
-
-      <button type="submit" class="btn btn-primary">
-        Ask
-      </button>
-    </div>
-  </form>
-</aside>
-
 <script>
 (function () {
   const panel = document.querySelector('.ask-panel');
   if (!panel) return;
 
   const RUN_ID = panel.dataset.runId;
+
+  if (!RUN_ID) {
+    console.error('paper-scout: no run ID found for assistant panel');
+    return;
+  }
 
   const thread = panel.querySelector('#qa-thread');
   const speakToggle = panel.querySelector('#speakToggle');
@@ -242,6 +215,8 @@
       resolveTurn(pendingId, data);
 
     } catch (err) {
+      console.error(err);
+
       resolveTurn(
         pendingId,
         {

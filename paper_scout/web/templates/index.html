@@ -26,7 +26,10 @@
   <div id="report-pane">
     {% include "partials/report.html" %}
   </div>
-  {% include "partials/ask_panel.html" %}
+  {% if run %}
+    {% include "partials/ask_panel.html" %}
+  {% endif %}
+
 </div>
 
 <div class="modal-overlay" id="modalOverlay">

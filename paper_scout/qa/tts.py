@@ -22,6 +22,7 @@ from __future__ import annotations
 import io
 import logging
 import wave
+import re
 from typing import Optional
 from piper.config import SynthesisConfig
 
@@ -30,8 +31,24 @@ logger = logging.getLogger(__name__)
 
 _voice = None
 _voice_path_loaded: Optional[str] = None
+
 _DEFAULT_SYN_CONFIG = SynthesisConfig(length_scale=1.15)  # >1.0 = slower, 1.0 = default pace
 
+_MD_BOLD_RE = re.compile(r"\*\*(.*?)\*\*")
+_MD_ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.*?)\*(?!\*)")
+_CITATION_RE = re.compile(r"\s*\[\d+(?:,\s*\d+)*\]")
+_MULTI_SPACE_RE = re.compile(r" {2,}")
+
+
+def _clean_text_for_speech(text: str) -> str:
+    """Strips markdown emphasis and citation brackets before synthesis
+    — Piper reads raw markup literally (e.g. "asterisk asterisk"), and
+    citation numbers like [3] add no value spoken aloud."""
+    text = _CITATION_RE.sub("", text)
+    text = _MD_BOLD_RE.sub(r"\1", text)
+    text = _MD_ITALIC_RE.sub(r"\1", text)
+    text = _MULTI_SPACE_RE.sub(" ", text)
+    return text.strip()
 
 def _get_voice(voice_path: str):
     global _voice, _voice_path_loaded
@@ -45,7 +62,7 @@ def _get_voice(voice_path: str):
 
 
 def synthesize_speech(text: str, voice_path: str) -> Optional[bytes]:
-    text = text.strip()
+    text = _clean_text_for_speech(text)
     if not text:
         return None
 

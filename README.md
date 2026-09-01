@@ -16,7 +16,7 @@ The whole thing runs locally through Ollama, using a small model for per paper s
 
 Give it a query like `"diffusion models for audio"` and it will:
 
-1. Search arXiv, Semantic Scholar, and Hugging Face Papers
+1. Search arXiv, Semantic Scholar, and Hugging Face Papers (optionally refining your query first with a small local model, always with a chance to review, edit, or cancel the suggestion before anything is searched)
 2. Deduplicate results across sources and rank them by relevance, recency, and citation count
 3. Download PDFs and extract each paper's Abstract, Conclusion, Limitations, and Future Work sections, using a column aware extractor that correctly handles two column academic layouts
 4. Summarize each paper with a small local model

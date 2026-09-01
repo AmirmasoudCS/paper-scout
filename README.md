@@ -101,7 +101,7 @@ python -m paper_scout "your research topic here"
 ```
 
 | Argument | Description |
-|---|---|
+|:---------|:-----------|
 | `query` | Research field or query, e.g. `'diffusion models for audio'` (required) |
 | `-h`, `--help` | Show the help message and exit |
 | `--config CONFIG` | Path to `config.yaml` (default: `./config.yaml`) |

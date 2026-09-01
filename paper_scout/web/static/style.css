@@ -616,15 +616,20 @@ p.body-text strong { color: var(--ink); font-weight: 600; }
 
 .progress-view.active { display: block; }
 
+.progress-stages {
+  margin-top: 28px;
+}
+
 .progress-stage {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 0;
+  padding: 18px 4px;
   border-bottom: 1px solid var(--hairline);
   font-family: var(--mono);
   font-size: 13px;
   color: var(--ink-faint);
+  letter-spacing: 0.02em;
 }
 
 .progress-stage .stage-dot {

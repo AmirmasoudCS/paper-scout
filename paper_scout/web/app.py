@@ -26,7 +26,7 @@ from typing import Optional
 import base64
 from fastapi import UploadFile, File
 
-from paper_scout.utils.preflight import run_preflight_checks
+from paper_scout.utils.preflight import run_preflight_checks, PreflightResult
 
 from paper_scout.qa.answer import answer_question
 from paper_scout.qa.stt import transcribe_audio
@@ -49,6 +49,8 @@ app = FastAPI(title="paper-scout")
 _WEB_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=_WEB_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=_WEB_DIR / "templates")
+
+_last_preflight: Optional[PreflightResult] = None
 
 @app.on_event("startup")
 def _log_preflight_status() -> None:
@@ -214,6 +216,12 @@ def create_run(
     if not query:
         return HTMLResponse(
             "<p class='body-text'>Please enter a research topic.</p>", status_code=400
+        )
+
+    if _last_preflight is not None and not _last_preflight.ok:
+        return HTMLResponse(
+            f"<p class='body-text'>Can't start a search right now: {_last_preflight.errors[0]}</p>",
+            status_code=503,
         )
 
     config = load_config()

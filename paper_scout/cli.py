@@ -26,6 +26,8 @@ from paper_scout.llm.query_refine import refine_search_query
 from paper_scout.pipeline import run_pipeline
 from paper_scout.utils.config import load_config
 
+from paper_scout.utils.preflight import run_preflight_checks
+
 
 def _configure_logging(config: dict) -> None:
     log_cfg = config.get("logging", {})
@@ -113,6 +115,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     _configure_logging(config)
+
+    preflight = run_preflight_checks(config)
+    if preflight.warnings:
+        print(preflight.format() + "\n", file=sys.stderr)
+    if not preflight.ok:
+        print(preflight.format(), file=sys.stderr)
+        return 1
+
     logger = logging.getLogger(__name__)
 
     query = args.query

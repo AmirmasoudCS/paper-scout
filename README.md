@@ -102,10 +102,10 @@ python -m paper_scout "your research topic here"
 
 | Argument | Description |
 |:---------|:-----------|
-| `query`           | Research field or query, e.g. `'diffusion models for audio'` (required) |
-| `-h`, `--help`           | Show the help message and exit |
-| `--config CONFIG`           | Path to `config.yaml` (default: `./config.yaml`) |
-| `--refine-query`           | Use the small model to fix spelling and tighten your query's phrasing before searching, with a chance to review, edit, or cancel the suggestion |
+| `query` | Research field or query, e.g. `'diffusion models for audio'` (required) |
+| `-h`, `--help` | Show the help message and exit |
+| `--config CONFIG` | Path to `config.yaml` (default: `./config.yaml`) |
+| `--refine-query` | Use the small model to fix spelling and tighten your query's phrasing before searching, with a chance to review, edit, or cancel the suggestion |
 
 With `--refine-query`, the CLI prints your original query alongside the suggested rewrite and prompts you to accept, edit, or keep the original before the search runs. Nothing is sent to the pipeline without your confirmation.
 

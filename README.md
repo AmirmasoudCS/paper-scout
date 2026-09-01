@@ -305,7 +305,8 @@ Tests marked `ollama` or `network` require a running local Ollama server or live
 - Future work ideation is two tiered. The grounded tier will refuse to run rather than fall back to ungrounded brainstorming if none of the papers have extractable Limitations or Future Work text. The inferred tier picks up the papers the grounded tier cannot use, reasoning only from each paper's problem, method, and key result summary, and is always rendered in its own clearly labeled report section, never blended with the grounded output.
 - The web interface shows live, stage by stage progress for a running query and lets you browse every past run from the same place. Both the CLI and the web interface call the same pipeline underneath.
 - Query history search and comparing runs against each other are planned as future additions but are not part of the current scope.
-- **Report assistant.** Completed reports can be explored through the built-in assistant using text or voice input. Answers can also be spoken aloud when voice output is enabled.
+- **Report assistant.** See Key Concepts above and the [🎙️ Report Assistant](#️-report-assistant) section for details on text and voice interaction with completed reports.
+</br>
 
 ## ⚖️ License
 

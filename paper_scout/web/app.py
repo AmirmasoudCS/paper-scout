@@ -26,6 +26,8 @@ from typing import Optional
 import base64
 from fastapi import UploadFile, File
 
+from paper_scout.utils.preflight import run_preflight_checks
+
 from paper_scout.qa.answer import answer_question
 from paper_scout.qa.stt import transcribe_audio
 from paper_scout.qa.tts import synthesize_speech
@@ -48,6 +50,22 @@ _WEB_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=_WEB_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=_WEB_DIR / "templates")
 
+@app.on_event("startup")
+def _log_preflight_status() -> None:
+    """Runs once when the server boots. Logged, not raised — browsing
+    past runs doesn't need Ollama, so a down server or missing model
+    shouldn't prevent the app from starting, but it should be loud in
+    the logs before someone tries to start a run and hits a confusing
+    mid-pipeline failure instead."""
+    config = load_config()
+    preflight = run_preflight_checks(config)
+
+    if preflight.errors:
+        logger.error("Preflight check failed:\n%s", preflight.format())
+    elif preflight.warnings:
+        logger.warning("Preflight check passed with warnings:\n%s", preflight.format())
+    else:
+        logger.info("Preflight check passed — all systems ready.")
 
 def _output_dir() -> Path:
     config = load_config()

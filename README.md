@@ -127,7 +127,7 @@ Then open `http://127.0.0.1:8000` in your browser. Click **New search**, enter a
 You'll be shown the suggested rewrite alongside your original and can accept, edit, or cancel it before anything runs.
 
 <p align="center">
-  <img src="assets/screenshots/refine_confirm.png" width="60%">
+  <img src="assets/screenshots/refinement.png" width="60%">
 </p>
 
 Watch the run progress stage by stage in real time. Past runs are listed in the sidebar and can be reopened at any point.

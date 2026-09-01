@@ -1,23 +1,27 @@
-<div
-  class="progress-view active"
-  hx-get="/jobs/{{ job_id }}"
-  hx-trigger="load, every 2s"
-  hx-target="#report-pane"
-  hx-swap="innerHTML"
->
+<main class="main">
+  <div
+    class="progress-view active"
+    hx-get="/jobs/{{ job_id }}"
+    hx-trigger="load, every 2s"
+    hx-target="#report-pane"
+    hx-swap="innerHTML"
+  >
 
-  <div class="report-header">
-    <div class="eyebrow">Running</div>
-    <h1 class="report-title">{{ query }}</h1>
+    <div class="report-header">
+      <div class="eyebrow">Running</div>
+      <h1 class="report-title">{{ query }}</h1>
+    </div>
+
+    <div class="progress-stages">
+      {% for stage in stages %}
+        <div class="progress-stage {{ stage.status }}">
+          <span class="stage-dot"></span>
+          <span>{{ stage.label }}</span>
+        </div>
+      {% endfor %}
+    </div>
+
   </div>
+</main>
 
-  <div class="progress-stages">
-    {% for stage in stages %}
-      <div class="progress-stage {{ stage.status }}">
-        <span class="stage-dot"></span>
-        <span>{{ stage.label }}</span>
-      </div>
-    {% endfor %}
-  </div>
-
-</div>
+<div id="ask-pane" hx-swap-oob="innerHTML"></div>

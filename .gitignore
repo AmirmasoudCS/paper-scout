@@ -224,8 +224,9 @@ log/*
 # Cache for the pdfs of the model
 outputs/pdf_cache
 
-# PDFs
+# Outputs
 *.pdf
+outputs/*
 
 # Debug
 tmp_debug_run

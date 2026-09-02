@@ -54,18 +54,21 @@ _last_preflight: Optional[PreflightResult] = None
 
 @app.on_event("startup")
 def _log_preflight_status() -> None:
-    """Runs once when the server boots. Logged, not raised — browsing
-    past runs doesn't need Ollama, so a down server or missing model
-    shouldn't prevent the app from starting, but it should be loud in
-    the logs before someone tries to start a run and hits a confusing
-    mid-pipeline failure instead."""
+    """Runs once when the server boots. The result is cached in
+    _last_preflight and used by create_run() to reject new searches
+    immediately with a clear message, instead of letting the request
+    fail downstream inside refine_search_query()/start_job() with a
+    less specific error. This is a startup-time snapshot, not a live
+    check — if Ollama goes down after the server starts, this won't
+    catch it until restart."""
+    global _last_preflight
     config = load_config()
-    preflight = run_preflight_checks(config)
+    _last_preflight = run_preflight_checks(config)
 
-    if preflight.errors:
-        logger.error("Preflight check failed:\n%s", preflight.format())
-    elif preflight.warnings:
-        logger.warning("Preflight check passed with warnings:\n%s", preflight.format())
+    if _last_preflight.errors:
+        logger.error("Preflight check failed:\n%s", _last_preflight.format())
+    elif _last_preflight.warnings:
+        logger.warning("Preflight check passed with warnings:\n%s", _last_preflight.format())
     else:
         logger.info("Preflight check passed — all systems ready.")
 

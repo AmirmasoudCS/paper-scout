@@ -381,3 +381,184 @@ def test_create_run_allowed_when_preflight_has_only_warnings(client, monkeypatch
     response = client.post("/runs", data={"query": "some topic"})
 
     assert response.status_code == 200
+
+"""
+Additional tests for paper_scout.web.app — Q&A conversation memory
+integration. Append these to tests/test_web_app.py (reuses that
+file's `client`, `patch_output_dir` fixtures and `_make_run_dir`
+helper). get_qa_history/append_qa_turn are the REAL functions from
+runs.py operating on tmp_path, same philosophy as the rest of this
+file — only OllamaClient, answer_question, and
+build_conversation_context are mocked, since those are what would
+otherwise need a live Ollama server.
+"""
+
+import json
+
+from unittest.mock import MagicMock
+
+
+# ── POST /runs/{run_id}/ask ──────────────────────────────────────────
+
+
+def test_ask_report_persists_the_new_turn(client, monkeypatch, patch_output_dir):
+    _make_run_dir(patch_output_dir, "topic_2026-08-29", report_text="# Report\n\nSome content.")
+
+    monkeypatch.setattr(app_module.OllamaClient, "from_config", lambda config: MagicMock())
+    monkeypatch.setattr(
+        app_module, "build_conversation_context", lambda history, client: (None, [], history)
+    )
+    monkeypatch.setattr(app_module, "answer_question", lambda *a, **k: "The answer is 42.")
+
+    response = client.post(
+        "/runs/topic_2026-08-29/ask", data={"question": "What is the answer?"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] == "The answer is 42."
+
+    saved = json.loads((patch_output_dir / "topic_2026-08-29" / "qa_history.json").read_text())
+    assert saved["turns"] == [{"question": "What is the answer?", "answer": "The answer is 42."}]
+
+
+def test_ask_report_passes_conversation_context_to_answer_question(
+    client, monkeypatch, patch_output_dir
+):
+    run_dir = _make_run_dir(patch_output_dir, "topic_2026-08-29", report_text="# Report")
+    run_dir.joinpath("qa_history.json").write_text(
+        json.dumps(
+            {
+                "turns": [{"question": "q1", "answer": "a1"}],
+                "summary": "prior summary",
+                "summarized_through": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(app_module.OllamaClient, "from_config", lambda config: MagicMock())
+    monkeypatch.setattr(
+        app_module,
+        "build_conversation_context",
+        lambda history, client: (
+            "prior summary",
+            history["turns"],
+            history,
+        ),
+    )
+
+    captured = {}
+
+    def fake_answer_question(report_markdown, question, client, conversation_summary=None, recent_turns=None):
+        captured["conversation_summary"] = conversation_summary
+        captured["recent_turns"] = recent_turns
+        return "an answer"
+
+    monkeypatch.setattr(app_module, "answer_question", fake_answer_question)
+
+    client.post("/runs/topic_2026-08-29/ask", data={"question": "q2"})
+
+    assert captured["conversation_summary"] == "prior summary"
+    assert captured["recent_turns"] == [{"question": "q1", "answer": "a1"}]
+
+
+def test_ask_report_preserves_updated_summary_after_append(client, monkeypatch, patch_output_dir):
+    """If build_conversation_context advances summarized_through/summary
+    this request, that progress must survive the subsequent
+    append_qa_turn call, not get overwritten by stale state."""
+    _make_run_dir(patch_output_dir, "topic_2026-08-29", report_text="# Report")
+
+    monkeypatch.setattr(app_module.OllamaClient, "from_config", lambda config: MagicMock())
+    monkeypatch.setattr(
+        app_module,
+        "build_conversation_context",
+        lambda history, client: (
+            "newly condensed summary",
+            [],
+            {"turns": history["turns"], "summary": "newly condensed summary", "summarized_through": 5},
+        ),
+    )
+    monkeypatch.setattr(app_module, "answer_question", lambda *a, **k: "an answer")
+
+    client.post("/runs/topic_2026-08-29/ask", data={"question": "a new question"})
+
+    saved = json.loads((patch_output_dir / "topic_2026-08-29" / "qa_history.json").read_text())
+    assert saved["summary"] == "newly condensed summary"
+    assert saved["summarized_through"] == 5
+
+
+def test_ask_report_returns_404_for_unknown_run(client):
+    response = client.post("/runs/does-not-exist/ask", data={"question": "hi"})
+    assert response.status_code == 404
+
+
+def test_ask_report_rejects_empty_question(client, patch_output_dir):
+    _make_run_dir(patch_output_dir, "topic_2026-08-29", report_text="# Report")
+
+    response = client.post("/runs/topic_2026-08-29/ask", data={"question": "   "})
+
+    assert response.status_code == 400
+
+
+# ── GET /runs/{run_id} — ask panel restored via OOB swap ────────────
+
+
+def test_view_run_includes_saved_qa_history_in_response(client, patch_output_dir):
+    run_dir = _make_run_dir(patch_output_dir, "topic_2026-08-29", report_text="# Report")
+    run_dir.joinpath("qa_history.json").write_text(
+        json.dumps(
+            {
+                "turns": [{"question": "What did they find?", "answer": "A 12% improvement."}],
+                "summary": None,
+                "summarized_through": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    response = client.get("/runs/topic_2026-08-29")
+
+    assert response.status_code == 200
+    assert "What did they find?" in response.text
+    assert "A 12% improvement." in response.text
+    assert 'id="ask-pane"' in response.text  # OOB swap target present
+
+
+def test_view_run_shows_empty_thread_when_no_history_yet(client, patch_output_dir):
+    _make_run_dir(patch_output_dir, "topic_2026-08-29", report_text="# Report")
+
+    response = client.get("/runs/topic_2026-08-29")
+
+    assert response.status_code == 200
+    assert 'id="qa-thread"' in response.text
+
+
+# ── GET / — initial load restores history for the selected run ─────
+
+
+def test_index_includes_saved_qa_history_for_most_recent_run(client, patch_output_dir):
+    run_dir = _make_run_dir(
+        patch_output_dir, "topic_2026-08-29", metadata={"query": "topic"}, report_text="# Report"
+    )
+    run_dir.joinpath("qa_history.json").write_text(
+        json.dumps(
+            {
+                "turns": [{"question": "earlier question", "answer": "earlier answer"}],
+                "summary": None,
+                "summarized_through": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    response = client.get("/")
+
+    assert "earlier question" in response.text
+    assert "earlier answer" in response.text
+
+
+def test_index_with_no_runs_does_not_error_on_missing_history(client):
+    response = client.get("/")
+
+    assert response.status_code == 200  # no run selected — history defaults, no crash

@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 from paper_scout.llm.ollama_client import OllamaClient
 from paper_scout.llm.query_refine import refine_search_query
 
+from paper_scout.qa.history import build_conversation_context
+
 import logging
 from pathlib import Path
 from typing import Optional

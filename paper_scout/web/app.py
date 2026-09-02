@@ -177,11 +177,11 @@ def index(request: Request):
     runs = list_runs(_output_dir())
     selected = runs[0] if runs else None
     report_html = None
-    history = []
+    history = {"turns": [], "summary": None, "summarized_through": 0}
     if selected is not None:
         report_html = _render_markdown(get_run_report_markdown(_output_dir(), selected.run_id))
         history = get_qa_history(_output_dir(), selected.run_id)
-
+ 
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -203,18 +203,19 @@ def view_run(request: Request, run_id: str):
     run = get_run(_output_dir(), run_id)
     if run is None:
         return HTMLResponse("<p>Run not found.</p>", status_code=404)
-
+ 
     report_html = _render_markdown(get_run_report_markdown(_output_dir(), run_id))
     history = get_qa_history(_output_dir(), run_id)
-
+ 
     report_response = templates.TemplateResponse(
         request, "partials/report.html", {"run": run, "report_html": report_html}
     )
     ask_pane_html = templates.get_template("partials/ask_pane_oob.html").render(
         {"request": request, "run": run, "history": history}
     )
-
+ 
     return HTMLResponse(report_response.body.decode("utf-8") + ask_pane_html)
+
 
 @app.post("/runs", response_class=HTMLResponse)
 def create_run(
@@ -316,7 +317,7 @@ async def ask_report(
     report_markdown = get_run_report_markdown(_output_dir(), run_id)
     if report_markdown is None:
         return JSONResponse({"error": "Report not found."}, status_code=404)
-
+ 
     if audio is not None and audio.filename:
         audio_bytes = await audio.read()
         transcribed = transcribe_audio(audio_bytes)
@@ -325,16 +326,26 @@ async def ask_report(
                 {"error": "Could not transcribe your question — please try again or type it instead."}
             )
         question = transcribed
-
+ 
     question = question.strip()
     if not question:
         return JSONResponse({"error": "Please ask a question."}, status_code=400)
-
+ 
     config = load_config()
     client = OllamaClient.from_config(config)
-    answer = answer_question(report_markdown, question, client)
-    append_qa_turn(_output_dir(), run_id, question, answer)
-
+ 
+    history = get_qa_history(_output_dir(), run_id)
+    conversation_summary, recent_turns, updated_history = build_conversation_context(history, client)
+ 
+    answer = answer_question(
+        report_markdown,
+        question,
+        client,
+        conversation_summary=conversation_summary,
+        recent_turns=recent_turns,
+    )
+    append_qa_turn(_output_dir(), run_id, updated_history, question, answer)
+ 
     audio_b64 = None
     if speak:
         voice_path = config.get("qa", {}).get("tts_voice_path")
@@ -342,5 +353,5 @@ async def ask_report(
             audio_bytes_out = synthesize_speech(answer, voice_path)
             if audio_bytes_out:
                 audio_b64 = base64.b64encode(audio_bytes_out).decode("ascii")
-
+ 
     return JSONResponse({"question": question, "answer": answer, "audio_b64": audio_b64, "error": None})

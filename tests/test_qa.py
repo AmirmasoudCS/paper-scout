@@ -323,3 +323,51 @@ def test_synthesize_speech_reloads_voice_when_path_changes(monkeypatch):
     synthesize_speech("Hello.", "models/voice_b.onnx")
 
     assert load_calls == ["models/voice_a.onnx", "models/voice_b.onnx"]
+
+"""
+Additional tests for paper_scout.qa.answer — conversation-context
+passthrough. Append these to tests/test_qa.py (reuses that file's
+_StubClient class and imports).
+"""
+
+
+def test_answer_question_passes_conversation_summary_to_prompt():
+    client = _StubClient("some answer")
+
+    answer_question(
+        "report text",
+        "a question",
+        client,
+        conversation_summary="Earlier the user asked about X.",
+    )
+
+    prompt, system = client.calls[0]
+    assert "Earlier the user asked about X." in prompt
+
+
+def test_answer_question_passes_recent_turns_to_prompt():
+    client = _StubClient("some answer")
+
+    answer_question(
+        "report text",
+        "a question",
+        client,
+        recent_turns=[{"question": "what is X?", "answer": "X is a method."}],
+    )
+
+    prompt, system = client.calls[0]
+    assert "what is X?" in prompt
+    assert "X is a method." in prompt
+
+
+def test_answer_question_works_without_any_history():
+    """Existing single-turn callers (no conversation_summary/recent_turns
+    passed) must keep working unchanged."""
+    client = _StubClient("some answer")
+
+    result = answer_question("report text", "a question", client)
+
+    assert result == "some answer"
+    prompt, system = client.calls[0]
+    assert "Earlier in this conversation" not in prompt
+    assert "Most recent turns" not in prompt

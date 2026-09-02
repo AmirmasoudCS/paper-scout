@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from paper_scout.web.runs import get_run, get_run_report_markdown, list_runs
+from paper_scout.web.runs import get_qa_history, save_qa_history, append_qa_turn
 
 
 def _make_run_dir(tmp_path, name, metadata=None, report_text=None):
@@ -113,3 +114,107 @@ def test_extraction_summary_and_future_work_ideation_default_to_empty_dict(tmp_p
 
     assert run.extraction_summary == {}
     assert run.future_work_ideation == {}
+
+"""
+Additional tests for paper_scout.web.runs — Q&A history persistence.
+Append these to tests/test_web_runs.py (reuses that file's
+_make_run_dir helper). Also add this import at the top:
+
+    from paper_scout.web.runs import (
+        append_qa_turn,
+        get_qa_history,
+        save_qa_history,
+    )
+"""
+
+
+def test_get_qa_history_returns_empty_structure_when_no_file(tmp_path):
+    _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+
+    history = get_qa_history(tmp_path, "topic_2026-08-29")
+
+    assert history == {"turns": [], "summary": None, "summarized_through": 0}
+
+
+def test_get_qa_history_returns_empty_structure_when_run_dir_missing(tmp_path):
+    history = get_qa_history(tmp_path, "does-not-exist")
+
+    assert history == {"turns": [], "summary": None, "summarized_through": 0}
+
+
+def test_get_qa_history_survives_corrupted_json(tmp_path):
+    run_dir = _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+    (run_dir / "qa_history.json").write_text("{not valid json", encoding="utf-8")
+
+    history = get_qa_history(tmp_path, "topic_2026-08-29")
+
+    assert history == {"turns": [], "summary": None, "summarized_through": 0}
+
+
+def test_get_qa_history_merges_over_defaults_for_partial_files(tmp_path):
+    """An older/partial qa_history.json (e.g. written before the
+    summary/summarized_through fields existed) should still load with
+    those fields defaulted, not raise a KeyError downstream."""
+    run_dir = _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+    (run_dir / "qa_history.json").write_text(
+        '{"turns": [{"question": "q", "answer": "a"}]}', encoding="utf-8"
+    )
+
+    history = get_qa_history(tmp_path, "topic_2026-08-29")
+
+    assert history["turns"] == [{"question": "q", "answer": "a"}]
+    assert history["summary"] is None
+    assert history["summarized_through"] == 0
+
+
+def test_save_qa_history_writes_full_structure(tmp_path):
+    _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+    history = {
+        "turns": [{"question": "q1", "answer": "a1"}],
+        "summary": "a summary",
+        "summarized_through": 1,
+    }
+
+    save_qa_history(tmp_path, "topic_2026-08-29", history)
+
+    reloaded = get_qa_history(tmp_path, "topic_2026-08-29")
+    assert reloaded == history
+
+
+def test_append_qa_turn_adds_to_existing_turns(tmp_path):
+    _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+    existing = {"turns": [{"question": "q1", "answer": "a1"}], "summary": None, "summarized_through": 0}
+
+    append_qa_turn(tmp_path, "topic_2026-08-29", existing, "q2", "a2")
+
+    history = get_qa_history(tmp_path, "topic_2026-08-29")
+    assert history["turns"] == [
+        {"question": "q1", "answer": "a1"},
+        {"question": "q2", "answer": "a2"},
+    ]
+
+
+def test_append_qa_turn_preserves_summary_fields(tmp_path):
+    """The history dict passed in (e.g. from build_conversation_context,
+    which may have just advanced summarized_through) must have its
+    summary/summarized_through preserved, not reset, when a new turn
+    is appended."""
+    _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+    updated = {"turns": [{"question": "q1", "answer": "a1"}], "summary": "prior summary", "summarized_through": 1}
+
+    append_qa_turn(tmp_path, "topic_2026-08-29", updated, "q2", "a2")
+
+    history = get_qa_history(tmp_path, "topic_2026-08-29")
+    assert history["summary"] == "prior summary"
+    assert history["summarized_through"] == 1
+    assert len(history["turns"]) == 2
+
+
+def test_append_qa_turn_on_empty_history(tmp_path):
+    _make_run_dir(tmp_path, "topic_2026-08-29", report_text="# Report")
+    empty = get_qa_history(tmp_path, "topic_2026-08-29")
+
+    append_qa_turn(tmp_path, "topic_2026-08-29", empty, "first question", "first answer")
+
+    history = get_qa_history(tmp_path, "topic_2026-08-29")
+    assert history["turns"] == [{"question": "first question", "answer": "first answer"}]

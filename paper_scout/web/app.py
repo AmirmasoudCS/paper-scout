@@ -333,6 +333,7 @@ async def ask_report(
     config = load_config()
     client = OllamaClient.from_config(config)
     answer = answer_question(report_markdown, question, client)
+    append_qa_turn(_output_dir(), run_id, question, answer)
 
     audio_b64 = None
     if speak:

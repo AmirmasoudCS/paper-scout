@@ -302,3 +302,108 @@ Question: {question}
 Answer using ONLY the report above. If the answer isn't in the report, say so directly."""
 
     return QA_SYSTEM_PROMPT, user_prompt
+
+# ── Additions to paper_scout/llm/prompts.py ─────────────────────────
+# Paste these in, and replace the existing build_qa_prompt with the
+# updated version below (same function name, extended signature —
+# existing callers with no history keep working unchanged).
+
+
+# ── Conversation summarization (small model, Q&A memory) ───────────
+
+CONVERSATION_SUMMARY_SYSTEM_PROMPT = """You condense older turns of a question-and-answer \
+conversation about a research report into a short running summary. You preserve what was \
+asked and what was answered, in plain factual terms, so a later reader has enough context to \
+understand follow-up questions. You do not add opinions, do not invent anything not present \
+in the turns given to you, and you do not answer any questions yourself — you only summarize."""
+
+
+def build_conversation_summary_prompt(
+    previous_summary: str | None, turns_to_summarize: list[dict]
+) -> tuple[str, str]:
+    """
+    Build the (system, user) prompt for condensing older Q&A turns into
+    a running summary. turns_to_summarize is a list of {"question":
+    str, "answer": str} dicts — the turns falling out of the recent-
+    turns window (see qa/history.py). previous_summary is the summary
+    produced by any earlier call to this same function, so the summary
+    accumulates incrementally rather than being rebuilt from scratch
+    each time.
+    """
+    turns_text = "\n\n".join(
+        f'Q: {t["question"]}\nA: {t["answer"]}' for t in turns_to_summarize
+    )
+
+    if previous_summary:
+        user_prompt = f"""Existing summary of the conversation so far:
+{previous_summary.strip()}
+
+New turns to fold into that summary:
+{turns_text}
+
+Write an updated summary that incorporates the new turns into the existing one. Keep it \
+concise — a few sentences to a short paragraph. Return ONLY the updated summary."""
+    else:
+        user_prompt = f"""Summarize the following question-and-answer turns from a conversation \
+about a research report:
+
+{turns_text}
+
+Keep it concise — a few sentences to a short paragraph. Return ONLY the summary."""
+
+    return CONVERSATION_SUMMARY_SYSTEM_PROMPT, user_prompt
+
+
+# ── Report Q&A (large model, single-report grounded) — UPDATED ─────
+# Replaces the existing build_qa_prompt in prompts.py.
+
+QA_SYSTEM_PROMPT = """You answer questions about ONE specific research report, using ONLY the \
+report text provided to you. You never use outside knowledge, and you never guess. If the \
+report does not contain information to answer the question, say plainly that the report does \
+not cover that, rather than speculating or answering from general knowledge. Keep answers \
+concise and directly grounded in the report's own wording. Earlier conversation context, if \
+given, is only to help you understand what the current question is referring to (e.g. "the \
+second one") — it is never itself a source of facts about the report."""
+
+_MAX_REPORT_CHARS_IN_QA_PROMPT = 12000
+
+
+def build_qa_prompt(
+    report_markdown: str,
+    question: str,
+    conversation_summary: str | None = None,
+    recent_turns: list[dict] | None = None,
+) -> tuple[str, str]:
+    """
+    Build the (system, user) prompt for report Q&A. The whole report is
+    passed as context — a single report is small enough that chunking/
+    retrieval would be over-engineering for this use case.
+
+    conversation_summary and recent_turns are optional prior-turn
+    context (see qa/history.py for how they're produced) — passed so
+    the model can resolve references like "the second one" without
+    treating earlier answers as report content. Both default to None/
+    empty so existing single-turn callers are unaffected.
+    """
+    report_text = report_markdown.strip()
+    if len(report_text) > _MAX_REPORT_CHARS_IN_QA_PROMPT:
+        report_text = report_text[:_MAX_REPORT_CHARS_IN_QA_PROMPT].rstrip() + "\n\n[...truncated]"
+
+    history_block = ""
+    if conversation_summary:
+        history_block += f"\nEarlier in this conversation (summarized):\n{conversation_summary.strip()}\n"
+    if recent_turns:
+        recent_text = "\n\n".join(
+            f'Q: {t["question"]}\nA: {t["answer"]}' for t in recent_turns
+        )
+        history_block += f"\nMost recent turns of this conversation:\n{recent_text}\n"
+
+    user_prompt = f"""Report:
+{report_text}
+{history_block}
+Question: {question}
+
+Answer using ONLY the report above. Use the conversation context, if given, only to understand \
+what the question refers to — not as a source of facts. If the answer isn't in the report, say so directly."""
+
+    return QA_SYSTEM_PROMPT, user_prompt

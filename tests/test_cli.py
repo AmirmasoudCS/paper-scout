@@ -15,6 +15,8 @@ import pytest
 import paper_scout.cli as cli_module
 from paper_scout.llm.query_refine import QueryRefinement
 from paper_scout.utils.models import PipelineRun
+from paper_scout.utils.preflight import PreflightResult
+
 
 SAMPLE_CONFIG = {
     "logging": {"log_dir": "log", "level": "INFO"},
@@ -27,9 +29,14 @@ SAMPLE_CONFIG = {
 
 @pytest.fixture(autouse=True)
 def patch_logging(monkeypatch, tmp_path):
-    """Avoid writing real log files into the repo during tests."""
+    """Avoid writing real log files into the repo during tests. Also
+    defaults run_preflight_checks to a clean pass, since most CLI tests
+    aren't testing preflight behavior and shouldn't depend on a real
+    (possibly unreachable) Ollama server. Tests that DO care about
+    preflight override this with their own monkeypatch."""
     config = {**SAMPLE_CONFIG, "logging": {"log_dir": str(tmp_path / "log"), "level": "INFO"}}
     monkeypatch.setattr(cli_module, "load_config", lambda path: config)
+    monkeypatch.setattr(cli_module, "run_preflight_checks", lambda config: PreflightResult())
     return config
 
 

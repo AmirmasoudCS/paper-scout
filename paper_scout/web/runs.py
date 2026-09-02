@@ -101,3 +101,29 @@ def get_run_report_markdown(output_dir: str | Path, run_id: str) -> Optional[str
     if not report_path.exists():
         return None
     return report_path.read_text(encoding="utf-8")
+
+def get_qa_history(output_dir: str | Path, run_id: str) -> list[dict]:
+    """Loads a run's saved Q&A turns, most-recent-last. Returns []
+    (never raises) if no history exists yet or the file is corrupted."""
+    path = Path(output_dir) / run_id / "qa_history.json"
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to read qa_history.json in %s: %s", path, exc)
+        return []
+
+
+def append_qa_turn(output_dir: str | Path, run_id: str, question: str, answer: str) -> None:
+    """Appends one Q&A turn to a run's history file. Best-effort — a
+    write failure here shouldn't break the answer already returned to
+    the user, so this logs rather than raises."""
+    run_dir = Path(output_dir) / run_id
+    path = run_dir / "qa_history.json"
+    history = get_qa_history(output_dir, run_id)
+    history.append({"question": question, "answer": answer})
+    try:
+        path.write_text(json.dumps(history, indent=2), encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to write qa_history.json in %s: %s", path, exc)

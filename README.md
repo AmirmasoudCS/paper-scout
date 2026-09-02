@@ -216,6 +216,7 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   ├── 📁 qa
 │   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 answer.py
+│   │   ├── 🐍 history.py
 │   │   ├── 🐍 stt.py
 │   │   └── 🐍 tts.py
 │   ├── 📁 ranking
@@ -243,12 +244,14 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   │   ├── 🐍 __init__.py
 │   │   ├── 🐍 config.py
 │   │   ├── 🐍 logging_config.py
-│   │   └── 🐍 models.py
+│   │   ├── 🐍 models.py
+│   │   └── 🐍 preflight.py
 │   ├── 📁 web
 │   │   ├── 📁 static
 │   │   │   └── 🎨 style.css
 │   │   ├── 📁 templates
 │   │   │   ├── 📁 partials
+│   │   │   │   ├── 🌐 ask_pane_oob.html
 │   │   │   │   ├── 🌐 ask_panel.html
 │   │   │   │   ├── 🌐 job_error.html
 │   │   │   │   ├── 🌐 progress.html
@@ -273,12 +276,16 @@ All tunable settings live in `config.yaml`: which sources are enabled, how many 
 │   └── 🐍 smoke_test.py
 ├── 📁 tests
 │   ├── 📁 prompt_eval
+│   │   ├── 🐍 __init__.py
 │   │   └── 🐍 test_query_refine.py
 │   ├── 🐍 conftest.py
 │   ├── 🐍 test_cli.py
 │   ├── 🐍 test_ingestion.py
 │   ├── 🐍 test_llm.py
 │   ├── 🐍 test_pipeline.py
+│   ├── 🐍 test_preflight.py
+│   ├── 🐍 test_qa.py
+│   ├── 🐍 test_qa_history.py
 │   ├── 🐍 test_query_refine.py
 │   ├── 🐍 test_ranking.py
 │   ├── 🐍 test_report.py

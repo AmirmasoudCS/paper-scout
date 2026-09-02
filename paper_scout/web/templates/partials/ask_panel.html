@@ -8,7 +8,20 @@
     </label>
   </div>
 
-  <div class="qa-thread" id="qa-thread"></div>
+  <div class="qa-thread" id="qa-thread">
+    {% for turn in history %}
+      <div class="qa-turn">
+        <div class="qa-question">
+          <span class="qa-role">You</span>
+          <p>{{ turn.question }}</p>
+        </div>
+        <div class="qa-answer">
+          <span class="qa-role">paper-scout</span>
+          <p>{{ turn.answer }}</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
 
   <form id="askForm">
     <div class="ask-input-row">

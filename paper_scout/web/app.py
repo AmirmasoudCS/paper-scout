@@ -177,8 +177,10 @@ def index(request: Request):
     runs = list_runs(_output_dir())
     selected = runs[0] if runs else None
     report_html = None
+    history = []
     if selected is not None:
         report_html = _render_markdown(get_run_report_markdown(_output_dir(), selected.run_id))
+        history = get_qa_history(_output_dir(), selected.run_id)
 
     return templates.TemplateResponse(
         request,
@@ -188,6 +190,7 @@ def index(request: Request):
             "selected_run_id": selected.run_id if selected else None,
             "run": selected,
             "report_html": report_html,
+            "history": history,
         },
     )
 

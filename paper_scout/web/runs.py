@@ -102,28 +102,54 @@ def get_run_report_markdown(output_dir: str | Path, run_id: str) -> Optional[str
         return None
     return report_path.read_text(encoding="utf-8")
 
-def get_qa_history(output_dir: str | Path, run_id: str) -> list[dict]:
-    """Loads a run's saved Q&A turns, most-recent-last. Returns []
-    (never raises) if no history exists yet or the file is corrupted."""
+# ── Replaces get_qa_history / append_qa_turn at the bottom of runs.py ──
+
+_EMPTY_QA_HISTORY = {"turns": [], "summary": None, "summarized_through": 0}
+
+
+def get_qa_history(output_dir: str | Path, run_id: str) -> dict:
+    """Loads a run's saved Q&A state: {"turns": [...], "summary":
+    str|None, "summarized_through": int}. "turns" holds every raw
+    question/answer pair (for display); "summary" and
+    "summarized_through" track how much of the older conversation has
+    already been condensed by qa/history.py's sliding window. Returns
+    a fresh empty structure (never raises) if no history exists yet or
+    the file is corrupted."""
     path = Path(output_dir) / run_id / "qa_history.json"
     if not path.exists():
-        return []
+        return dict(_EMPTY_QA_HISTORY)
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        loaded = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("Failed to read qa_history.json in %s: %s", path, exc)
-        return []
+        return dict(_EMPTY_QA_HISTORY)
+
+    # Merge over the defaults so older/partial files (or a corrupted
+    # write) don't blow up callers expecting all three keys present.
+    return {**_EMPTY_QA_HISTORY, **loaded}
 
 
-def append_qa_turn(output_dir: str | Path, run_id: str, question: str, answer: str) -> None:
-    """Appends one Q&A turn to a run's history file. Best-effort — a
+def save_qa_history(output_dir: str | Path, run_id: str, history: dict) -> None:
+    """Writes a run's full Q&A state back to disk. Best-effort — a
     write failure here shouldn't break the answer already returned to
     the user, so this logs rather than raises."""
     run_dir = Path(output_dir) / run_id
     path = run_dir / "qa_history.json"
-    history = get_qa_history(output_dir, run_id)
-    history.append({"question": question, "answer": answer})
     try:
         path.write_text(json.dumps(history, indent=2), encoding="utf-8")
     except OSError as exc:
         logger.warning("Failed to write qa_history.json in %s: %s", path, exc)
+
+
+def append_qa_turn(output_dir: str | Path, run_id: str, history: dict, question: str, answer: str) -> None:
+    """Appends one new Q&A turn to an (already-loaded, possibly
+    summary-updated) history dict and persists the result. Callers
+    should pass the history dict returned by
+    qa.history.build_conversation_context (or get_qa_history, if no
+    summarization was needed) so any summary progress made this
+    request isn't lost."""
+    updated = {
+        **history,
+        "turns": history.get("turns", []) + [{"question": question, "answer": answer}],
+    }
+    save_qa_history(output_dir, run_id, updated)

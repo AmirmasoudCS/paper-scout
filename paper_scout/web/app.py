@@ -38,6 +38,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import markdown as md_lib
 
+
+from paper_scout.web.runs import get_run, get_run_report_markdown, list_runs, get_qa_history, append_qa_turn
 from paper_scout.web.jobs import get_job, stage_progress, start_job
 from paper_scout.utils.config import load_config
 from paper_scout.web.runs import get_run, get_run_report_markdown, list_runs
@@ -192,21 +194,24 @@ def index(request: Request):
 
 @app.get("/runs/{run_id}", response_class=HTMLResponse)
 def view_run(request: Request, run_id: str):
-    """HTMX partial: swaps the report pane when a sidebar run is clicked."""
+    """HTMX partial: swaps the report pane when a sidebar run is
+    clicked, and restores that run's own Q&A history in the assistant
+    panel via an out-of-band swap in the same response."""
     run = get_run(_output_dir(), run_id)
     if run is None:
         return HTMLResponse("<p>Run not found.</p>", status_code=404)
 
     report_html = _render_markdown(get_run_report_markdown(_output_dir(), run_id))
+    history = get_qa_history(_output_dir(), run_id)
 
-    return templates.TemplateResponse(
-        request,
-        "partials/report.html",
-        {
-            "run": run,
-            "report_html": report_html,
-        },
+    report_response = templates.TemplateResponse(
+        request, "partials/report.html", {"run": run, "report_html": report_html}
     )
+    ask_pane_html = templates.get_template("partials/ask_pane_oob.html").render(
+        {"request": request, "run": run, "history": history}
+    )
+
+    return HTMLResponse(report_response.body.decode("utf-8") + ask_pane_html)
 
 @app.post("/runs", response_class=HTMLResponse)
 def create_run(

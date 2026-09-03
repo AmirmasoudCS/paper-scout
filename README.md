@@ -37,6 +37,7 @@ You run one command or one click and get one folder. No intermediate prompts, no
 - **Graceful degradation.** Every source, every paper, and every pipeline stage is built to fail without taking the rest of the run down with it. A blocked source, a failed download, or a missing section all fall back to a sensible default instead of raising.
 - **Self contained run folders.** Each run gets its own folder under `outputs/` containing the report and every PDF used to produce it, with no shared cross run cache.
 - **Report assistant.** Completed reports can be queried through an integrated question-answering assistant. Questions can be entered as text or spoken through the microphone, and answers can optionally be spoken aloud.
+- **Conversation memory.** The assistant remembers earlier turns within a run. The last five question and answer pairs are always sent to the model verbatim, and anything older is folded once into a running summary rather than resent in full on every question, so follow ups like "what about the second one" resolve correctly without the context sent to the model growing without bound.
 
 ## ⚙️ Requirements
 
@@ -162,6 +163,8 @@ Once a run is finished, you can ask questions about the generated report through
 
 The assistant supports both text and voice interaction. Questions can be entered directly or spoken through the microphone, and answers can optionally be spoken aloud.
 
+The assistant also remembers your conversation within a run. Earlier questions and answers are saved alongside the run and reloaded automatically when you reopen it, and the model itself sees the last five turns verbatim plus a running summary of anything older, so you can ask a follow up like "what about the second one" without repeating context. Only the text of each turn is kept; spoken answers are re-synthesized from that saved text rather than stored as audio.
+
 <p align="center">
     <img src="assets/screenshots/assistant_panel.png" width="90%">
 </p>
@@ -183,9 +186,12 @@ Each run creates its own folder under `outputs/`, named after your query and the
     │   └── 📕 2510.21866.pdf
     ├── 📘 report.md
     ├── 📕 report.pdf
-    └── 🧩 run_metadata.json
+    ├── 🧩 run_metadata.json
+    └── 🧩 qa_history.json
 ```
 > Generated using [Tree Printer](https://github.com/AmirmasoudCS/Tree-Printer.git)
+
+`qa_history.json` only appears once you've asked the assistant at least one question about that run; it isn't created up front.
 
 There is no shared cross run PDF cache. Every run's PDFs live inside that run's own folder, so a run directory is fully self contained and portable. You can zip it, move it, or delete it without affecting any other run.
 
@@ -321,6 +327,7 @@ Tests marked `ollama` or `network` require a running local Ollama server or live
 - The web interface shows live, stage by stage progress for a running query and lets you browse every past run from the same place. Both the CLI and the web interface call the same pipeline underneath.
 - Query history search and comparing runs against each other are planned as future additions but are not part of the current scope.
 - **Report assistant.** See Key Concepts above and the [🎙️ Report Assistant](#️-report-assistant) section for details on text and voice interaction with completed reports.
+- Both the CLI and the web server run a startup preflight check. Ollama reachability and having the configured models pulled are treated as hard failures and stop the run; a missing TTS voice, FFmpeg not being on `PATH`, or missing WeasyPrint dependencies are treated as soft warnings, since those features already degrade gracefully elsewhere. The web server's check runs once at startup, so it won't catch Ollama going down mid session until the server is restarted.
 </br>
 
 ## ⚖️ License
